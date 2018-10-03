@@ -1,0 +1,4 @@
+# a comment
+tests/data/window_0.0.dat    0.0    100
+tests/data/window_1.0.dat    1.0    200
+tests/data/window_99.0.dat    99.0    600

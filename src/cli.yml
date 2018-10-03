@@ -1,0 +1,57 @@
+name: wham
+version: "0.1.0"
+author: D. Bauer <bauer@cbs.tu-darmstadt.de>
+about: WHAM analysis
+args:
+    - metadata:
+        short: f
+        long: file
+        value_name: METADATA
+        help: Sets the metadata file
+        takes_value: true
+        required: true
+    - min_hist:
+        long: min
+        value_name: HIST_MIN 
+        takes_value: true
+        required: true
+        allow_hyphen_values: true
+    - max_hist:
+        long: max
+        value_name: HIST_MAX 
+        takes_value: true
+        required: true
+        allow_hyphen_values: true
+    - bins:
+        short: b
+        long: bins
+        value_name: BINS
+        takes_value: true
+        required: true
+    - tolerance:
+        short: t
+        long: tolerance
+        value_name: TOLERANCE
+        takes_value: true
+        required: false
+    - iterations:
+        short: i
+        long: iterations
+        value_name: ITERATIONS
+        takes_value: true
+        required: false
+    - pbc:
+        long: pbc
+        help: Apply periodic conditions (Not implemented yet.)        
+    - verbose:
+        short: v
+        long: verbose
+        help: Enables verbose output.
+        takes_value: false
+    - temperature:
+        short: T
+        long: temperature
+        help: WHAM temperature in Kelvin
+        takes_value: true
+        required: true
+        

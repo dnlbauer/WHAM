@@ -1,0 +1,8 @@
+[package]
+name = "wham"
+version = "0.1.0"
+authors = ["danijoo <danijob88@googlemail.com>"]
+
+[dependencies]
+clap = {version="2.32.0", features=['yaml']}
+scan_fmt = "0.1.3"
