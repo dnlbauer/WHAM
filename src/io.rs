@@ -7,6 +7,16 @@ use std::io::BufReader;
 use k_B;
 use std::process;
 use std::option::Option;
+use std::path::Path;
+
+// Returns the path to path2 relative to path1
+// path1: "path/to/file.dat"
+// path2: "another_file.dat"
+// => result = path/to/another_file.dat
+fn get_relative_path(path1: &str, path2: &str) -> String {
+    let path1 = Path::new(path1);
+    path1.parent().unwrap().join(path2).to_str().unwrap().to_string()
+}
 
 // Read input data into a histogram set by iterating over input files
 // given in the metadata file
@@ -15,7 +25,7 @@ pub fn read_data(cfg: &Config) -> Option<HistogramSet> {
 	let mut bias_fc: Vec<f32> = Vec::new();
     let mut histograms: Vec<Histogram> = Vec::new();
 	let kT = cfg.temperature * k_B;
-	let f = File::open(&cfg.metadata_file).unwrap_or_else(|x| {
+    let f = File::open(&cfg.metadata_file).unwrap_or_else(|x| {
         eprintln!("Failed to read metadata from {}. {}", &cfg.metadata_file, x);
         process::exit(1)
         });
@@ -29,7 +39,7 @@ pub fn read_data(cfg: &Config) -> Option<HistogramSet> {
     	}
     	let (path, x0, k) = scan_fmt!(&line, "{} {} {}", String, f32, f32);
         
-        let path = path.unwrap();
+        let path = get_relative_path(&cfg.metadata_file, &path.unwrap());
         match read_window_file(&path, cfg) {
             Some(h) => {
                 histograms.push(h);
@@ -165,5 +175,16 @@ mod tests {
         assert_eq!(vec![100.0, 200.0], hs.bias_fc);
         assert_eq!(cfg.temperature * k_B, hs.kT);
         assert_eq!(2, hs.histograms.len())
+    }
+
+    #[test]
+    fn get_relative_path() {
+        let path1 = "path/to/some_file.dat";
+        let path2 = "another_file.dat";
+        let path3 = "subfolder/another_file.dat";
+        let relative2 = super::get_relative_path(&path1, &path2);
+        assert_eq!("path/to/another_file.dat" ,relative2);
+        let relative3 = super::get_relative_path(&path1, &path3);
+        assert_eq!("path/to/subfolder/another_file.dat" ,relative3);
     }
 }
