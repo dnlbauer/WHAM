@@ -7,7 +7,6 @@ use wham::Config;
 use std::error::Error;
 use std::result::Result;
 use std::process;
-use std::env;
 
 // Parse command line arguments into a Config struct
 fn cli() -> Result<Config, Box<Error>> {
