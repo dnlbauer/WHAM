@@ -78,9 +78,7 @@ impl fmt::Display for HistogramSet {
 		for h in &self.histograms {
 			datapoints += h.num_points;
 		}
-
-		write!(f, "{} windows and {} bins ranging from {} to {} (bin width: {}).\nDatapoints: {}",
-			self.num_windows, self.num_bins, self.hist_min, self.hist_max, self.bin_width, datapoints)
+		write!(f, "{} windows, {} datapoints", self.num_windows, datapoints)
     }
 }
 

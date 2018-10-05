@@ -153,13 +153,14 @@ fn free_energy(hs: &HistogramSet, P: &mut Vec<f32>, A: &mut Vec<f32>) {
 }
 
 pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
-	println!("{}", &cfg);
+	println!("Supplied WHAM options: {}", &cfg);
 
 	// read input data into the histograms object
+	println!("Reading input files.");
 	let histograms = io::read_data(&cfg).unwrap();
-	println!("Input consists of {}",&histograms);
+	println!("{}",&histograms);
 
-	// allocate data arrays for performance
+	// allocate only once for better performance
 	let mut F_prev = vec![f32::INFINITY; histograms.num_windows]; 
 	let mut F = vec![0.0; histograms.num_windows]; 
 	let mut P = vec![f32::NAN; histograms.num_bins];
@@ -168,6 +169,9 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
 	// perform WHAM until convergence
 	let mut iteration = 0;
 	while !is_converged(&F_prev, &F, cfg.tolerance) && iteration < cfg.max_iterations {
+		use std::thread;
+		use std::time;
+		thread::sleep(time::Duration::from_millis(10));
 		iteration += 1;
 		// store F values before the next iteration
 		F_prev.copy_from_slice(&F[..]);
@@ -176,55 +180,40 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
 		perform_wham_iteration(&histograms, &F_prev, &mut F, &mut P);
 
 		// output some stats during calculation
-		if iteration % 100 == 0 {
+		if iteration % 10 == 0 {
 			println!("Iteration {}: dF={}", &iteration, &diff_avg(&F_prev, &F));
 		}
 
 		// Dump free energy and bias offsets
-		if iteration % 1000 == 0 {
+		if iteration % 100 == 0 {
 			free_energy(&histograms, &mut P, &mut A);
-			println!("#PMF");
-			println!("#x\t\tFree Energy\t\tP(x)");
-			for bin in 0..histograms.num_bins {
-				let x = get_x_for_bin(bin, histograms.hist_min, histograms.bin_width);
-				println!("{:9.5}\t{:9.5}\t{:9.5}", x, A[bin], P[bin]);
-			}
-			println!("#Bias offsets");
-			println!("#Window\t\tF\t\tdF");
-			for window in 0..histograms.num_windows {
-				println!("{}\t{:9.5}\t{:8.8}", window, F[window], (F[window]-F_prev[window]).abs());
-			}
+			dump_state(&histograms, &F, &F_prev, &P, &A);
 		}
 	}
 	
+	// final free energy calculation and state dump
+	free_energy(&histograms, &mut P, &mut A);
+	dump_state(&histograms, &F, &F_prev, &P, &A);
+
 	if iteration == cfg.max_iterations {
 		println!("!!!!! WHAM not converged! (max iterations reached) !!!!!");
 	}
 	
-
-	// println!("#Window\t\t F");
-	// for window in 0..histograms.num_windows {
-	// 	println!("#{}\t\t{}", window, F[window]);
-	// }
-	// let mut free_energy = vec![0.0; histograms.num_bins];
-	// for bin in 0..histograms.num_bins {
-	// 	let P = calc_bin_probability(bin, &histograms, &F);
-	// 	free_energy[bin] = -histograms.kT * P.ln();
-	// }
-	// let mut min = &f32::MAX;
-	// for bin in 0..histograms.num_bins {
-	// 	if &free_energy[bin] < min {
-	// 		min = &free_energy[bin]
-	// 	}
-	// } 
-	// println!("#x\t\tFree energy");
-	// for bin in 0..histograms.num_bins {
-	// 	let x = get_x_for_bin(bin, histograms.hist_min, histograms.bin_width);
-	// 	let free_normalized = free_energy[bin] - min;
-	// 	println!("{}\t\t{}", x, free_normalized);
-	// }
-
 	Ok(())
+}
+
+fn dump_state(hs: &HistogramSet, F: &Vec<f32>, F_prev: &Vec<f32>, P: &Vec<f32>, A: &Vec<f32>) {
+	println!("# PMF");
+	println!("#x\t\tFree Energy\t\tP(x)");
+	for bin in 0..hs.num_bins {
+		let x = get_x_for_bin(bin, hs.hist_min, hs.bin_width);
+		println!("{:9.5}\t{:9.5}\t{:9.5}", x, A[bin], P[bin]);
+	}
+	println!("# Bias offsets");
+	println!("#Window\t\tF\t\tdF");
+	for window in 0..hs.num_windows {
+		println!("{}\t{:9.5}\t{:8.8}", window, F[window], (F[window]-F_prev[window]).abs());
+	}
 }
 
 #[cfg(test)]

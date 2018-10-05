@@ -18,6 +18,12 @@ fn get_relative_path(path1: &str, path2: &str) -> String {
     path1.parent().unwrap().join(path2).to_str().unwrap().to_string()
 }
 
+pub fn vprintln(s: String, verbose: bool) {
+    if verbose {
+        println!("{}", s);
+    }
+}
+
 // Read input data into a histogram set by iterating over input files
 // given in the metadata file
 pub fn read_data(cfg: &Config) -> Option<HistogramSet> {
@@ -43,9 +49,7 @@ pub fn read_data(cfg: &Config) -> Option<HistogramSet> {
         match read_window_file(&path, cfg) {
             Some(h) => {
                 histograms.push(h);
-                if cfg.verbose {
-                    println!("File: {}, {} Data points added.", &path, histograms.last().unwrap().num_points);
-                }
+                vprintln(format!("{}, {} data points added.", &path, histograms.last().unwrap().num_points), cfg.verbose);
             },
             None => {
                 eprintln!("No data points inside histogram boundaries: {}", &path);
