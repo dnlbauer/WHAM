@@ -99,6 +99,44 @@ fn perform_wham_iteration(hs: &HistogramSet, F_prev: &Vec<f32>,F: &mut Vec<f32>,
 		F[window] = 0.0;
 	}
 
+	// for bin in 0..hs.num_bins {
+	// 	let x = get_x_for_bin(bin, hs.hist_min, hs.bin_width);
+	// 	let mut num = 0.0;
+	// 	let mut denom = 0.0;
+
+	// 	for window in 0..hs.num_windows {
+	// 		match hs.histograms[window].get_bin_count(bin) {
+	// 			Some(c) => num += c,
+	// 			_ => {}
+	// 		}
+	// 		let bias = calc_bias(
+	// 			hs.bias_fc[window],
+	// 			hs.bias_x0[window],
+	// 			x);
+	// 		let bf = ((F_prev[window]-bias) / hs.kT).exp();
+	// 		denom += hs.histograms[window].num_points as f32* bf
+	// 	}
+	// 	P[bin] = num / denom;
+	
+	// 	for window in 0..hs.num_windows {
+	// 		let bias = calc_bias(
+	// 				hs.bias_fc[window],
+	// 				hs.bias_x0[window],
+	// 				x);
+	// 		let bf = (-bias/hs.kT).exp() * P[bin];
+	// 		F[window] += bf;
+	// 	}
+	// }
+
+	// for window in 0..hs.num_windows {
+	// 	F[window] = -hs.kT * F[window].ln();
+	// }
+
+	// let norm = F[0];
+	// for window in 0..hs.num_windows {
+	// 	F[window] = F[window] - norm;
+	// }
+
 	// evaluate first WHAM equation for each bin to
 	// estimage probabilities based on previous offsets (F_prev)
 	for bin in 0..hs.num_bins {
@@ -110,6 +148,12 @@ fn perform_wham_iteration(hs: &HistogramSet, F_prev: &Vec<f32>,F: &mut Vec<f32>,
 	for window in 0..hs.num_windows {
 		F[window] = calc_window_F(window, hs, P);
 	}
+
+	// normalize F
+	let norm = F[0];
+	for window in 0..hs.num_windows {
+		F[window] = F[window] - norm;
+	}	
 }
 
 // get average difference between two bias offset sets
@@ -124,32 +168,30 @@ fn diff_avg(F: &Vec<f32>, F_prev: &Vec<f32>) -> f32 {
 
 // calculate the normalized free energy from normalized probability values
 fn free_energy(hs: &HistogramSet, P: &mut Vec<f32>, A: &mut Vec<f32>) {
-	// Normalize P
-	let mut P_sum = 0.0;
-	for bin in 0..hs.num_bins {
-		P_sum += P[bin];
-	}
-	for bin in 0..hs.num_bins {
-		P[bin] /= P_sum;
-	}
+	let mut bin_min = f32::MAX;
 
 	// Free energy calculation
 	for bin in 0..hs.num_bins {
 		A[bin] = -hs.kT*P[bin].ln();
-	}
-
-	// find min value
-	let mut min: f32 = f32::MAX;
-	for bin in 0..hs.num_bins {
-		if A[bin] < min {
-			min = A[bin]
+		if A[bin] < bin_min {
+			bin_min = A[bin];
 		}
 	}
 
-	// normalize A
+	// Make A relative to minimum
 	for bin in 0..hs.num_bins {
-		A[bin] -= min;
+		A[bin] -= bin_min;
 	}
+	// Normalize P
+	// let mut P_sum = 0.0;
+	// for bin in 0..hs.num_bins {
+	// 	P_sum += P[bin];
+	// }
+	// for bin in 0..hs.num_bins {
+	// 	P[bin] /= P_sum;
+	// }
+
+
 }
 
 pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
@@ -157,7 +199,9 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
 
 	// read input data into the histograms object
 	println!("Reading input files.");
-	let histograms = io::read_data(&cfg).unwrap();
+
+	let histograms = io::read_data(&cfg) // TODO nicer error handling for this
+		.expect("No datapoints in histogram boundaries.");
 	println!("{}",&histograms);
 
 	// allocate only once for better performance
@@ -169,9 +213,6 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
 	// perform WHAM until convergence
 	let mut iteration = 0;
 	while !is_converged(&F_prev, &F, cfg.tolerance) && iteration < cfg.max_iterations {
-		use std::thread;
-		use std::time;
-		thread::sleep(time::Duration::from_millis(10));
 		iteration += 1;
 		// store F values before the next iteration
 		F_prev.copy_from_slice(&F[..]);
@@ -295,13 +336,13 @@ mod tests {
 	}
 
 	#[test]
-	fn test_perform_wham_iteration() {
+	fn perform_wham_iteration() {
 		let hs = create_test_hs();
 		let prev_F = vec![0.0; hs.num_windows];
 		let mut F = vec![0.0; hs.num_windows];
 		let mut P =  vec![f32::NAN; hs.num_bins];
 		super::perform_wham_iteration(&hs, &prev_F, &mut F, &mut P);
-		let expected_F = vec!(0.596, -0.250);
+		let expected_F = vec!(0.0, -0.846);
 		let expected_P = vec!(0.959, 0.331, 0.656, 46.750);
 		for bin in 0..hs.num_bins {
 			assert_near(expected_P[bin], P[bin], 0.01)
