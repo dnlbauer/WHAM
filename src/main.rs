@@ -20,18 +20,9 @@ fn cli() -> Result<Config, Box<Error>> {
 	let verbose: bool = matches.is_present("verbose");
 	let temperature: f32 = matches.value_of("temperature").unwrap().parse()?;
 
-	let tolerance: f32;
-	if matches.is_present("tolerance") {
-		tolerance = matches.value_of("tolerance").unwrap().parse()?;
-	} else {
-		tolerance = std::f32::MIN_POSITIVE;
-	}
-	let max_iterations: usize;
-	if matches.is_present("iterations") {
-		max_iterations = matches.value_of("iterations").unwrap().parse()?;
-	} else {
-		max_iterations = std::usize::MAX;
-	}
+	let tolerance: f32 = matches.value_of("tolerance").unwrap_or("0.000001").parse()?;
+	let max_iterations: usize = matches.value_of("iterations").unwrap_or("100000").parse()?;
+
 	Ok(wham::Config{metadata_file, hist_min, hist_max, num_bins,
 		verbose, tolerance, max_iterations, temperature})
 }
