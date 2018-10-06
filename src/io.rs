@@ -71,7 +71,7 @@ pub fn read_data(cfg: &Config) -> Option<HistogramSet> {
     
     if histograms.len() > 0 {
         let bin_width = (cfg.hist_max - cfg.hist_min)/(cfg.num_bins as f32);
-        Some(HistogramSet::new(cfg.num_bins, bin_width, cfg.hist_min, cfg.hist_max, bias_x0, bias_fc, kT, histograms)) 
+        Some(HistogramSet::new(cfg.num_bins, bin_width, cfg.hist_min, cfg.hist_max, bias_x0, bias_fc, kT, histograms, cfg.cyclic)) 
     } else {
         None
     }
@@ -146,7 +146,8 @@ mod tests {
             verbose: false,
             tolerance: 0.0,
             max_iterations: 0,
-            temperature: 300.0
+            temperature: 300.0,
+            cyclic: false
         }
     }
 

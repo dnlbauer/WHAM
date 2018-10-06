@@ -26,6 +26,7 @@ pub struct Config {
 	pub tolerance: f32,
 	pub max_iterations: usize,
 	pub temperature: f32,
+	pub cyclic: bool,
 }
 
 impl fmt::Display for Config {
@@ -49,29 +50,17 @@ fn is_converged(old_F: &Vec<f32>, new_F: &Vec<f32>, tolerance: f32) -> bool {
 	true
 }
 
-// Harmonic bias calculation: bias = 0.5*k(dx)^2
-fn calc_bias(k: f32, x0: f32, x: f32) -> f32 {
-	let dx = (x-x0).abs();
-	0.5*k*dx*dx
-}
-
-// get center x value for a bin 
-fn get_x_for_bin(bin: usize, min: f32, width: f32) -> f32 {
-	min + width * ((bin as f32) + 0.5)
-}
-
 // estimate the probability of a bin of the histogram set based on F values
 // This evaluates the first WHAM equation for each bin
 fn calc_bin_probability(bin: usize, hs: &HistogramSet, F: &Vec<f32>) -> f32 {
 	let mut denom_sum = 0.0;
 	let mut bin_count = 0.0;
-	let x = get_x_for_bin(bin, hs.hist_min, hs.bin_width);
 	for window in 0..hs.num_windows {
 		let h: &Histogram = &hs.histograms[window];
 		if let Some(count) = h.get_bin_count(bin) {
 			bin_count += count;
 		}
-		let bias = calc_bias(hs.bias_fc[window], hs.bias_x0[window], x);
+		let bias = hs.calc_bias(bin, window);
 		let bias_offset = ((F[window] - bias) / hs.kT).exp();
 		denom_sum += (h.num_points as f32) * bias_offset;
 	}
@@ -83,8 +72,7 @@ fn calc_bin_probability(bin: usize, hs: &HistogramSet, F: &Vec<f32>) -> f32 {
 fn calc_window_F(window: usize, hs: &HistogramSet, P: &Vec<f32>) -> f32 {
 	let mut ln_sum = 0.0;
 	for bin in 0..hs.num_bins {
-		let x = get_x_for_bin(bin, hs.hist_min, hs.bin_width);
-		let bias = calc_bias(hs.bias_fc[window], hs.bias_x0[window], x);
+		let bias = hs.calc_bias(bin, window);
 		ln_sum += P[bin] * (-bias/hs.kT).exp()
 	}
 	-hs.kT * ln_sum.ln()
@@ -247,7 +235,7 @@ fn dump_state(hs: &HistogramSet, F: &Vec<f32>, F_prev: &Vec<f32>, P: &Vec<f32>, 
 	println!("# PMF");
 	println!("#x\t\tFree Energy\t\tP(x)");
 	for bin in 0..hs.num_bins {
-		let x = get_x_for_bin(bin, hs.hist_min, hs.bin_width);
+		let x = hs.get_x_for_bin(bin);
 		println!("{:9.5}\t{:9.5}\t{:9.5}", x, A[bin], P[bin]);
 	}
 	println!("# Bias offsets");
@@ -275,18 +263,10 @@ mod tests {
 		assert!(!converged);
 	}
 
-	#[test]
-	fn calc_bias() {
-		let x0 = 10.0;
-		let x = 5.0;
-		let k = 500.0;
-		assert_eq!(6250.0, super::calc_bias(k, x0, x));
-	}
-
 	fn create_test_hs() -> HistogramSet {
 		let h1 = Histogram::new(0, 2, 10, vec![3.0, 4.0, 3.0]);
 		let h2 = Histogram::new(0, 3, 20, vec![3.0, 2.0, 5.0, 10.0]);
-		HistogramSet::new(4, 1.0, 0.0, 4.0, vec![1.0, 2.0], vec![10.0, 10.0], 2.479, vec![h1, h2])
+		HistogramSet::new(4, 1.0, 0.0, 4.0, vec![1.0, 2.0], vec![10.0, 10.0], 2.479, vec![h1, h2], false)
 	}
 
 	fn assert_near(a: f32, b: f32, tolerance: f32) {
@@ -303,7 +283,6 @@ mod tests {
 			let F = super::calc_window_F(window, &hs, &probability);
 			assert_near(expected[window], F, 0.001);
 		}
-
 	}
 
 	#[test]
@@ -321,17 +300,6 @@ mod tests {
 		for b in 0..4 {
 			let p = super::calc_bin_probability(b, &hs, &F);
 			assert_near(expected[b], p, 0.001);
-		}
-	}
-
-	#[test]
-	fn get_x_for_bin() {
-		let min = 0.0;
-		let width = 1.0;
-		let expected = vec!(0.5, 1.5, 2.5, 3.5, 4.5);
-		for i in 0..5 {
-			let x = super::get_x_for_bin(i, min, width);
-			assert_eq!(expected[i], x);
 		}
 	}
 
