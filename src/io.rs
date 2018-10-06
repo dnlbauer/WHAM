@@ -86,9 +86,6 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
     let buf = BufReader::new(&f);
     
     let mut global_hist = vec![0.0; cfg.num_bins];
-    let mut num_points: u32 = 0;
-    let mut max_bin: usize = 0;
-    let mut min_bin: usize =(cfg.num_bins-1) as usize;
     let bin_width = (cfg.hist_max - cfg.hist_min)/(cfg.num_bins as f32);
     for l in buf.lines() {
     	let line = l.unwrap();
@@ -104,13 +101,6 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
     			if x > cfg.hist_min && x < cfg.hist_max {
     				let bin_ndx = ((x-cfg.hist_min) / bin_width) as usize;
                     global_hist[bin_ndx] += 1.0;
-    				num_points += 1;
-    				if bin_ndx > max_bin {
-    					max_bin = bin_ndx
-    				}
-    				if bin_ndx < min_bin {
-    					min_bin = bin_ndx
-    				}
     			} 
     		}
     		None => { 
@@ -119,14 +109,28 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
             }
     	}
     }
-    global_hist.truncate(max_bin+1);
-    if global_hist.len() > 1 || global_hist[0] != 0.0 {
-        global_hist.drain(..min_bin);
-        Some(Histogram::new(min_bin, max_bin, num_points, global_hist))
-    } else {
-        None
+
+    let mut max_bin: usize = 0;
+    let mut min_bin: usize =(cfg.num_bins-1) as usize;
+    for bin in 0..global_hist.len() {
+        if global_hist[bin] != 0.0 && bin > max_bin {
+            max_bin = bin;
+        }
+        if global_hist[bin] != 0.0 && bin < min_bin {
+            min_bin = bin;
+        }
     }
-     
+
+    if max_bin == min_bin {
+        None // zero length histogram
+    } else {
+        // trim global hist to save memory
+        global_hist.truncate(max_bin+1);
+        global_hist.drain(..min_bin);
+        
+        let num_points: f32 = global_hist.iter().sum();
+        Some(Histogram::new(min_bin, max_bin, num_points as u32, global_hist))
+    }
 }
 
 #[cfg(test)]
