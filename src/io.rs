@@ -121,12 +121,15 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
         }
     }
 
-    if max_bin == min_bin {
+    println!("{}", global_hist.len());
+    if (max_bin == min_bin && global_hist[max_bin] == 0.0) || max_bin < min_bin {
         None // zero length histogram
     } else {
+        println!("{}/{}, {:?}", min_bin, max_bin, global_hist);
         // trim global hist to save memory
         global_hist.truncate(max_bin+1);
         global_hist.drain(..min_bin);
+        println!("{}/{} ->{:?}", min_bin, max_bin, &global_hist);
         
         let num_points: f32 = global_hist.iter().sum();
         Some(Histogram::new(min_bin, max_bin, num_points as u32, global_hist))
