@@ -27,13 +27,14 @@ pub struct Config {
 	pub max_iterations: usize,
 	pub temperature: f32,
 	pub cyclic: bool,
+	pub output: String,
 }
 
 impl fmt::Display for Config {
 	 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-	 	write!(f, "Metadata={}, hist_min={}, hist_max={}, bins={}\nverbose={}, tolerance={}, iterations={}, temperature={}" , self.metadata_file, self.hist_min,
+	 	write!(f, "Metadata={}, hist_min={}, hist_max={}, bins={}\nverbose={}, tolerance={}, iterations={}, temperature={}, cyclic={}" , self.metadata_file, self.hist_min,
 	 		self.hist_max, self.num_bins, self.verbose, self.tolerance,
-	 		self.max_iterations, self.temperature)
+	 		self.max_iterations, self.temperature, self.cyclic)
     }
 }
 
@@ -170,14 +171,15 @@ fn free_energy(ds: &Dataset, P: &mut Vec<f32>, A: &mut Vec<f32>) {
 	for bin in 0..ds.num_bins {
 		A[bin] -= bin_min;
 	}
+
 	// Normalize P
-	// let mut P_sum = 0.0;
-	// for bin in 0..ds.num_bins {
-	// 	P_sum += P[bin];
-	// }
-	// for bin in 0..ds.num_bins {
-	// 	P[bin] /= P_sum;
-	// }
+	let mut P_sum = 0.0;
+	for bin in 0..ds.num_bins {
+		P_sum += P[bin];
+	}
+	for bin in 0..ds.num_bins {
+		P[bin] /= P_sum;
+	}
 
 
 }
@@ -221,12 +223,15 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
 	}
 	
 	// final free energy calculation and state dump
+	println!("Finished. Dumping final PMF");
 	free_energy(&histograms, &mut P, &mut A);
 	dump_state(&histograms, &F, &F_prev, &P, &A);
 
 	if iteration == cfg.max_iterations {
 		println!("!!!!! WHAM not converged! (max iterations reached) !!!!!");
 	}
+
+	io::write_results(&cfg.output, &histograms, &A, &P)?;
 	
 	Ok(())
 }

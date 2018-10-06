@@ -21,9 +21,10 @@ fn cli() -> Result<Config, Box<Error>> {
 	let tolerance: f32 = matches.value_of("tolerance").unwrap_or("0.000001").parse()?;
 	let max_iterations: usize = matches.value_of("iterations").unwrap_or("100000").parse()?;
 	let cyclic: bool = matches.is_present("cyclic");
+	let output = matches.value_of("output").unwrap_or("wham.out").to_string();
 
 	Ok(wham::Config{metadata_file, hist_min, hist_max, num_bins,
-		verbose, tolerance, max_iterations, temperature, cyclic})
+		verbose, tolerance, max_iterations, temperature, cyclic, output})
 }
 
 fn main() {

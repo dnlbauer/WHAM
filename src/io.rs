@@ -8,6 +8,8 @@ use k_B;
 use std::process;
 use std::option::Option;
 use std::path::Path;
+use std::error::Error;
+use std::result::Result;
 
 // Returns the path to path2 relative to path1
 // path1: "path/to/file.dat"
@@ -133,6 +135,16 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
     }
 }
 
+pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f32>, prob: &Vec<f32>) -> Result<(), Box<Error>> {
+     let mut output = File::create(out_file)?;
+     writeln!(output, "#{:8}\t{:8}\t{:8}", "x", "Free Energy", "Probability");
+     for bin in 0..free.len() {
+        let x = ds.get_x_for_bin(bin);
+        writeln!(output, "{:8.6}\t{:8.6}\t{:8.6}", x, free[bin], prob[bin])?;
+     }
+     Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -147,7 +159,8 @@ mod tests {
             tolerance: 0.0,
             max_iterations: 0,
             temperature: 300.0,
-            cyclic: false
+            cyclic: false,
+            output: "qwert".to_string(),
         }
     }
 

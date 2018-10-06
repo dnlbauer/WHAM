@@ -54,4 +54,10 @@ args:
         help: WHAM temperature in Kelvin
         takes_value: true
         required: true
+    - output:
+        short: o
+        long: output
+        help: Free energy output file (defaults to "wham.out")
+        takes_value: true
+        required: false
         
