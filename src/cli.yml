@@ -40,9 +40,9 @@ args:
         value_name: ITERATIONS
         takes_value: true
         required: false
-    - pbc:
-        long: pbc
-        help: Apply periodic conditions (Not implemented yet.)        
+    - cyclic:
+        long: cyclic
+        help: For periodic reaction coordinates. If this is set, the first and last coordinate bin will be assumed to be neighbors for the bias calculation.        
     - verbose:
         short: v
         long: verbose

@@ -18,12 +18,12 @@ fn cli() -> Result<Config, Box<Error>> {
 	let num_bins: usize = matches.value_of("bins").unwrap().parse()?;
 	let verbose: bool = matches.is_present("verbose");
 	let temperature: f32 = matches.value_of("temperature").unwrap().parse()?;
-
 	let tolerance: f32 = matches.value_of("tolerance").unwrap_or("0.000001").parse()?;
 	let max_iterations: usize = matches.value_of("iterations").unwrap_or("100000").parse()?;
+	let cyclic: bool = matches.is_present("cyclic");
 
 	Ok(wham::Config{metadata_file, hist_min, hist_max, num_bins,
-		verbose, tolerance, max_iterations, temperature})
+		verbose, tolerance, max_iterations, temperature, cyclic})
 }
 
 fn main() {
