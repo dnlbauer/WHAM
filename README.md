@@ -1,6 +1,5 @@
 TODO
 ====
-- Periodicity
 - Multithreading
 - Error analysis
 - Better error handling (file read/write)
