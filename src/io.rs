@@ -1,4 +1,4 @@
-use super::histogram::HistogramSet;
+use super::histogram::Dataset;
 use super::histogram::Histogram;
 use super::Config;
 use std::fs::File;
@@ -26,7 +26,7 @@ pub fn vprintln(s: String, verbose: bool) {
 
 // Read input data into a histogram set by iterating over input files
 // given in the metadata file
-pub fn read_data(cfg: &Config) -> Option<HistogramSet> {
+pub fn read_data(cfg: &Config) -> Option<Dataset> {
 	let mut bias_x0: Vec<f32> = Vec::new();
 	let mut bias_fc: Vec<f32> = Vec::new();
     let mut histograms: Vec<Histogram> = Vec::new();
@@ -71,7 +71,7 @@ pub fn read_data(cfg: &Config) -> Option<HistogramSet> {
     
     if histograms.len() > 0 {
         let bin_width = (cfg.hist_max - cfg.hist_min)/(cfg.num_bins as f32);
-        Some(HistogramSet::new(cfg.num_bins, bin_width, cfg.hist_min, cfg.hist_max, bias_x0, bias_fc, kT, histograms, cfg.cyclic)) 
+        Some(Dataset::new(cfg.num_bins, bin_width, cfg.hist_min, cfg.hist_max, bias_x0, bias_fc, kT, histograms, cfg.cyclic)) 
     } else {
         None
     }
@@ -170,20 +170,20 @@ mod tests {
     #[test]
     fn read_data() {
         let cfg = cfg();
-        let hs = super::read_data(&cfg);
-        assert!(hs.is_some());
-        let hs = hs.unwrap();
-        println!("{:?}", hs);
-        assert_eq!(2, hs.num_windows);
-        assert_eq!(cfg.num_bins, hs.num_bins);
-        assert_eq!(cfg.hist_min, hs.hist_min);
-        assert_eq!(cfg.hist_max, hs.hist_max);
+        let ds = super::read_data(&cfg);
+        assert!(ds.is_some());
+        let ds = ds.unwrap();
+        println!("{:?}", ds);
+        assert_eq!(2, ds.num_windows);
+        assert_eq!(cfg.num_bins, ds.num_bins);
+        assert_eq!(cfg.hist_min, ds.hist_min);
+        assert_eq!(cfg.hist_max, ds.hist_max);
         let expected_bin_width = (cfg.hist_max - cfg.hist_min)/cfg.num_bins as f32;
-        assert_eq!(expected_bin_width, hs.bin_width);  
-        assert_eq!(vec![0.0, 1.0], hs.bias_x0);  
-        assert_eq!(vec![100.0, 200.0], hs.bias_fc);
-        assert_eq!(cfg.temperature * k_B, hs.kT);
-        assert_eq!(2, hs.histograms.len())
+        assert_eq!(expected_bin_width, ds.bin_width);  
+        assert_eq!(vec![0.0, 1.0], ds.bias_x0);  
+        assert_eq!(vec![100.0, 200.0], ds.bias_fc);
+        assert_eq!(cfg.temperature * k_B, ds.kT);
+        assert_eq!(2, ds.histograms.len())
     }
 
     #[test]

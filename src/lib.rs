@@ -8,7 +8,7 @@ pub mod histogram;
 
 use std::error::Error;
 use std::result::Result;
-use histogram::{HistogramSet,Histogram};
+use histogram::{Dataset,Histogram};
 use std::f32;
 use std::fmt;
 
@@ -52,16 +52,16 @@ fn is_converged(old_F: &Vec<f32>, new_F: &Vec<f32>, tolerance: f32) -> bool {
 
 // estimate the probability of a bin of the histogram set based on F values
 // This evaluates the first WHAM equation for each bin
-fn calc_bin_probability(bin: usize, hs: &HistogramSet, F: &Vec<f32>) -> f32 {
+fn calc_bin_probability(bin: usize, ds: &Dataset, F: &Vec<f32>) -> f32 {
 	let mut denom_sum = 0.0;
 	let mut bin_count = 0.0;
-	for window in 0..hs.num_windows {
-		let h: &Histogram = &hs.histograms[window];
+	for window in 0..ds.num_windows {
+		let h: &Histogram = &ds.histograms[window];
 		if let Some(count) = h.get_bin_count(bin) {
 			bin_count += count;
 		}
-		let bias = hs.calc_bias(bin, window);
-		let bias_offset = ((F[window] - bias) / hs.kT).exp();
+		let bias = ds.calc_bias(bin, window);
+		let bias_offset = ((F[window] - bias) / ds.kT).exp();
 		denom_sum += (h.num_points as f32) * bias_offset;
 	}
 	bin_count / denom_sum
@@ -69,77 +69,77 @@ fn calc_bin_probability(bin: usize, hs: &HistogramSet, F: &Vec<f32>) -> f32 {
 
 // estimate the bias offset F of the histogram based on given probabilities
 // This evaluates the second WHAM equation for each window
-fn calc_window_F(window: usize, hs: &HistogramSet, P: &Vec<f32>) -> f32 {
+fn calc_window_F(window: usize, ds: &Dataset, P: &Vec<f32>) -> f32 {
 	let mut ln_sum = 0.0;
-	for bin in 0..hs.num_bins {
-		let bias = hs.calc_bias(bin, window);
-		ln_sum += P[bin] * (-bias/hs.kT).exp()
+	for bin in 0..ds.num_bins {
+		let bias = ds.calc_bias(bin, window);
+		ln_sum += P[bin] * (-bias/ds.kT).exp()
 	}
-	-hs.kT * ln_sum.ln()
+	-ds.kT * ln_sum.ln()
 }
 
 // One full WHAM iteration includes calculation of new probabilities P and
 // new bias offsets F based on previous bias offsets F_prev. This updates
 // the values in vectors F and P
-fn perform_wham_iteration(hs: &HistogramSet, F_prev: &Vec<f32>,F: &mut Vec<f32>, P: &mut Vec<f32>) {
+fn perform_wham_iteration(ds: &Dataset, F_prev: &Vec<f32>,F: &mut Vec<f32>, P: &mut Vec<f32>) {
 	// reset bias offsets
-	for window in 0..hs.num_windows {
+	for window in 0..ds.num_windows {
 		F[window] = 0.0;
 	}
 
-	// for bin in 0..hs.num_bins {
-	// 	let x = get_x_for_bin(bin, hs.hist_min, hs.bin_width);
+	// for bin in 0..ds.num_bins {
+	// 	let x = get_x_for_bin(bin, ds.hist_min, ds.bin_width);
 	// 	let mut num = 0.0;
 	// 	let mut denom = 0.0;
 
-	// 	for window in 0..hs.num_windows {
-	// 		match hs.histograms[window].get_bin_count(bin) {
+	// 	for window in 0..ds.num_windows {
+	// 		match ds.histograms[window].get_bin_count(bin) {
 	// 			Some(c) => num += c,
 	// 			_ => {}
 	// 		}
 	// 		let bias = calc_bias(
-	// 			hs.bias_fc[window],
-	// 			hs.bias_x0[window],
+	// 			ds.bias_fc[window],
+	// 			ds.bias_x0[window],
 	// 			x);
-	// 		let bf = ((F_prev[window]-bias) / hs.kT).exp();
-	// 		denom += hs.histograms[window].num_points as f32* bf
+	// 		let bf = ((F_prev[window]-bias) / ds.kT).exp();
+	// 		denom += ds.histograms[window].num_points as f32* bf
 	// 	}
 	// 	P[bin] = num / denom;
 	
-	// 	for window in 0..hs.num_windows {
+	// 	for window in 0..ds.num_windows {
 	// 		let bias = calc_bias(
-	// 				hs.bias_fc[window],
-	// 				hs.bias_x0[window],
+	// 				ds.bias_fc[window],
+	// 				ds.bias_x0[window],
 	// 				x);
-	// 		let bf = (-bias/hs.kT).exp() * P[bin];
+	// 		let bf = (-bias/ds.kT).exp() * P[bin];
 	// 		F[window] += bf;
 	// 	}
 	// }
 
-	// for window in 0..hs.num_windows {
-	// 	F[window] = -hs.kT * F[window].ln();
+	// for window in 0..ds.num_windows {
+	// 	F[window] = -ds.kT * F[window].ln();
 	// }
 
 	// let norm = F[0];
-	// for window in 0..hs.num_windows {
+	// for window in 0..ds.num_windows {
 	// 	F[window] = F[window] - norm;
 	// }
 
 	// evaluate first WHAM equation for each bin to
 	// estimage probabilities based on previous offsets (F_prev)
-	for bin in 0..hs.num_bins {
-		P[bin] = calc_bin_probability(bin, hs, F_prev);
+	for bin in 0..ds.num_bins {
+		P[bin] = calc_bin_probability(bin, ds, F_prev);
 	}
 
 	// evaluate second WHAM equation for each window to
 	// estimate new bias offsets from propabilities
-	for window in 0..hs.num_windows {
-		F[window] = calc_window_F(window, hs, P);
+	for window in 0..ds.num_windows {
+		F[window] = calc_window_F(window, ds, P);
 	}
 
 	// normalize F
 	let norm = F[0];
-	for window in 0..hs.num_windows {
+	for window in 0..ds.num_windows {
 		F[window] = F[window] - norm;
 	}	
 }
@@ -155,27 +155,27 @@ fn diff_avg(F: &Vec<f32>, F_prev: &Vec<f32>) -> f32 {
 
 
 // calculate the normalized free energy from normalized probability values
-fn free_energy(hs: &HistogramSet, P: &mut Vec<f32>, A: &mut Vec<f32>) {
+fn free_energy(ds: &Dataset, P: &mut Vec<f32>, A: &mut Vec<f32>) {
 	let mut bin_min = f32::MAX;
 
 	// Free energy calculation
-	for bin in 0..hs.num_bins {
-		A[bin] = -hs.kT*P[bin].ln();
+	for bin in 0..ds.num_bins {
+		A[bin] = -ds.kT*P[bin].ln();
 		if A[bin] < bin_min {
 			bin_min = A[bin];
 		}
 	}
 
 	// Make A relative to minimum
-	for bin in 0..hs.num_bins {
+	for bin in 0..ds.num_bins {
 		A[bin] -= bin_min;
 	}
 	// Normalize P
 	// let mut P_sum = 0.0;
-	// for bin in 0..hs.num_bins {
+	// for bin in 0..ds.num_bins {
 	// 	P_sum += P[bin];
 	// }
-	// for bin in 0..hs.num_bins {
+	// for bin in 0..ds.num_bins {
 	// 	P[bin] /= P_sum;
 	// }
 
@@ -231,23 +231,23 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
 	Ok(())
 }
 
-fn dump_state(hs: &HistogramSet, F: &Vec<f32>, F_prev: &Vec<f32>, P: &Vec<f32>, A: &Vec<f32>) {
+fn dump_state(ds: &Dataset, F: &Vec<f32>, F_prev: &Vec<f32>, P: &Vec<f32>, A: &Vec<f32>) {
 	println!("# PMF");
 	println!("#x\t\tFree Energy\t\tP(x)");
-	for bin in 0..hs.num_bins {
-		let x = hs.get_x_for_bin(bin);
+	for bin in 0..ds.num_bins {
+		let x = ds.get_x_for_bin(bin);
 		println!("{:9.5}\t{:9.5}\t{:9.5}", x, A[bin], P[bin]);
 	}
 	println!("# Bias offsets");
 	println!("#Window\t\tF\t\tdF");
-	for window in 0..hs.num_windows {
+	for window in 0..ds.num_windows {
 		println!("{}\t{:9.5}\t{:8.8}", window, F[window], (F[window]-F_prev[window]).abs());
 	}
 }
 
 #[cfg(test)]
 mod tests {
-	use super::histogram::{HistogramSet,Histogram};
+	use super::histogram::{Dataset,Histogram};
 	use std::f32;
 
 	#[test]
@@ -263,10 +263,10 @@ mod tests {
 		assert!(!converged);
 	}
 
-	fn create_test_hs() -> HistogramSet {
+	fn create_test_ds() -> Dataset {
 		let h1 = Histogram::new(0, 2, 10, vec![3.0, 4.0, 3.0]);
 		let h2 = Histogram::new(0, 3, 20, vec![3.0, 2.0, 5.0, 10.0]);
-		HistogramSet::new(4, 1.0, 0.0, 4.0, vec![1.0, 2.0], vec![10.0, 10.0], 2.479, vec![h1, h2], false)
+		Dataset::new(4, 1.0, 0.0, 4.0, vec![1.0, 2.0], vec![10.0, 10.0], 2.479, vec![h1, h2], false)
 	}
 
 	fn assert_near(a: f32, b: f32, tolerance: f32) {
@@ -276,46 +276,46 @@ mod tests {
 
 	#[test]
 	fn calc_bias_offset() {
-		let hs = create_test_hs();
+		let ds = create_test_ds();
 		let probability = vec!(0.959, 0.331, 0.656, 46.750);
 		let expected = vec!(0.596, -0.250);
-		for window in 0..hs.num_windows {
-			let F = super::calc_window_F(window, &hs, &probability);
+		for window in 0..ds.num_windows {
+			let F = super::calc_window_F(window, &ds, &probability);
 			assert_near(expected[window], F, 0.001);
 		}
 	}
 
 	#[test]
 	fn calc_bin_probability() {
-		let hs = create_test_hs();
+		let ds = create_test_ds();
 		let F = vec!(0.0, 0.0);
 		let expected = vec!(0.959, 0.331, 0.656, 46.750);
 		for b in 0..4 {
-			let p = super::calc_bin_probability(b, &hs, &F);
+			let p = super::calc_bin_probability(b, &ds, &F);
 			assert_near(expected[b], p, 0.001);
 		}
 
 		let F = vec!(1.0, 1.0);
 		let expected = vec!(0.641, 0.221, 0.439, 31.232);
 		for b in 0..4 {
-			let p = super::calc_bin_probability(b, &hs, &F);
+			let p = super::calc_bin_probability(b, &ds, &F);
 			assert_near(expected[b], p, 0.001);
 		}
 	}
 
 	#[test]
 	fn perform_wham_iteration() {
-		let hs = create_test_hs();
-		let prev_F = vec![0.0; hs.num_windows];
-		let mut F = vec![0.0; hs.num_windows];
-		let mut P =  vec![f32::NAN; hs.num_bins];
-		super::perform_wham_iteration(&hs, &prev_F, &mut F, &mut P);
+		let ds = create_test_ds();
+		let prev_F = vec![0.0; ds.num_windows];
+		let mut F = vec![0.0; ds.num_windows];
+		let mut P =  vec![f32::NAN; ds.num_bins];
+		super::perform_wham_iteration(&ds, &prev_F, &mut F, &mut P);
 		let expected_F = vec!(0.0, -0.846);
 		let expected_P = vec!(0.959, 0.331, 0.656, 46.750);
-		for bin in 0..hs.num_bins {
+		for bin in 0..ds.num_bins {
 			assert_near(expected_P[bin], P[bin], 0.01)
 		}
-		for window in 0..hs.num_windows {
+		for window in 0..ds.num_windows {
 			assert_near(expected_F[window], F[window], 0.01)	
 		}
 		

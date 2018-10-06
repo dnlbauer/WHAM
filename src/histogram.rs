@@ -34,9 +34,8 @@ impl Histogram {
 }
 
 // a set of histograms
-
 #[derive(Debug)]
-pub struct HistogramSet {
+pub struct Dataset {
 	// number of histogram windows (number of simulations)
 	pub num_windows: usize,
 
@@ -68,11 +67,11 @@ pub struct HistogramSet {
 	pub cyclic: bool,
 }
 
-impl HistogramSet {
+impl Dataset {
 	
-	pub fn new(num_bins: usize, bin_width: f32, hist_min: f32, hist_max: f32, bias_x0: Vec<f32>, bias_fc: Vec<f32>, kT: f32, histograms: Vec<Histogram>, cyclic: bool) -> HistogramSet {
+	pub fn new(num_bins: usize, bin_width: f32, hist_min: f32, hist_max: f32, bias_x0: Vec<f32>, bias_fc: Vec<f32>, kT: f32, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
 		let num_windows = histograms.len();
-		HistogramSet{num_windows, num_bins, bin_width, hist_min, hist_max, bias_x0, bias_fc, kT, histograms, cyclic}
+		Dataset{num_windows, num_bins, bin_width, hist_min, hist_max, bias_x0, bias_fc, kT, histograms, cyclic}
 	}
 
 	
@@ -98,7 +97,7 @@ impl HistogramSet {
 
 }
 
-impl fmt::Display for HistogramSet {
+impl fmt::Display for Dataset {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		let mut datapoints: u32 = 0;
 		for h in &self.histograms {
@@ -122,9 +121,9 @@ mod tests {
 		)
 	}
 
-	fn build_hist_set() -> HistogramSet {
+	fn build_hist_set() -> Dataset {
 		let h = build_hist();
-		HistogramSet::new( 
+		Dataset::new( 
 			7, // num bins
 			1.0, // bin width
 			0.0, // hist min
@@ -152,51 +151,51 @@ mod tests {
 
 	#[test]
 	fn calc_bias() {
-		let hs = build_hist_set();
+		let ds = build_hist_set();
 
 		// 7th element -> x=7.5, x0=7.5
-		assert_eq!(0.0, hs.calc_bias(7, 0));
+		assert_eq!(0.0, ds.calc_bias(7, 0));
 
 		// 8th element -> x=8.5, x0=7.5
-		assert_eq!(5.0, hs.calc_bias(8, 0));
+		assert_eq!(5.0, ds.calc_bias(8, 0));
 		
 
 		// 9th element -> x=9.5, x0=7.5
-		assert_eq!(20.0, hs.calc_bias(9, 0));
+		assert_eq!(20.0, ds.calc_bias(9, 0));
 
 
 		// 1st element -> x=0.5, x0=7.5. non-cyclic!
-		assert_eq!(245.0, hs.calc_bias(0, 0));
+		assert_eq!(245.0, ds.calc_bias(0, 0));
 	}
 
 	#[test]
 	fn calc_bias_offset_cyclic() {
-		let mut hs = build_hist_set();
-		hs.cyclic = true;
+		let mut ds = build_hist_set();
+		ds.cyclic = true;
 
 		// 7th element -> x=7.5, x0=7.5
-		assert_eq!(0.0, hs.calc_bias(7, 0));
+		assert_eq!(0.0, ds.calc_bias(7, 0));
 
 		// 8th element -> x=8.5, x0=7.5
-		assert_eq!(5.0, hs.calc_bias(8, 0));
+		assert_eq!(5.0, ds.calc_bias(8, 0));
 		
 
 		// 9th element -> x=9.5, x0=7.5
-		assert_eq!(20.0, hs.calc_bias(9, 0));
+		assert_eq!(20.0, ds.calc_bias(9, 0));
 
 
 		// 1st element -> x=0.5, x0=7.5
 		// cyclic flag makes bin 0 neighboring bin 9, so the distance is actually 2
-		assert_eq!(20.0, hs.calc_bias(0, 0));
+		assert_eq!(20.0, ds.calc_bias(0, 0));
 	}
 
 	#[test]
 	fn get_x_for_bin() {
-		let hs = build_hist_set();
+		let ds = build_hist_set();
 		let expected: Vec<f32> = vec![0,1,2,3,4,5,6,7,8].iter()
 				.map(|x| *x as f32 + 0.5).collect(); 
 		for i in 0..9 {
-			assert_eq!(expected[i], hs.get_x_for_bin(i));
+			assert_eq!(expected[i], ds.get_x_for_bin(i));
 		}
 	}
 }
