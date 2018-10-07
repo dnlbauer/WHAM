@@ -124,7 +124,7 @@ mod tests {
 	fn build_hist_set() -> Dataset {
 		let h = build_hist();
 		Dataset::new( 
-			7, // num bins
+			9, // num bins
 			1.0, // bin width
 			0.0, // hist min
 			9.0, // hist max
@@ -159,11 +159,6 @@ mod tests {
 		// 8th element -> x=8.5, x0=7.5
 		assert_eq!(5.0, ds.calc_bias(8, 0));
 		
-
-		// 9th element -> x=9.5, x0=7.5
-		assert_eq!(20.0, ds.calc_bias(9, 0));
-
-
 		// 1st element -> x=0.5, x0=7.5. non-cyclic!
 		assert_eq!(245.0, ds.calc_bias(0, 0));
 	}
@@ -180,13 +175,12 @@ mod tests {
 		assert_eq!(5.0, ds.calc_bias(8, 0));
 		
 
-		// 9th element -> x=9.5, x0=7.5
-		assert_eq!(20.0, ds.calc_bias(9, 0));
-
-
-		// 1st element -> x=0.5, x0=7.5
+		// 1th element -> x=0.5, x0=7.5
 		// cyclic flag makes bin 0 neighboring bin 9, so the distance is actually 2
 		assert_eq!(20.0, ds.calc_bias(0, 0));
+
+		// 2nd element -> x=1.5, x0=7.5
+		assert_eq!(45.0, ds.calc_bias(1, 0));
 	}
 
 	#[test]
