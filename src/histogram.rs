@@ -1,4 +1,5 @@
 use std::fmt;
+use std::cell::RefCell;
 
 // One histogram
 #[derive(Debug)]
@@ -51,12 +52,6 @@ pub struct Dataset {
 	// width of a bin in unit of x
 	pub bin_width: f32,
 
-	// locations of biases
-	pub bias_x0: Vec<f32>,
-
-	// force constants of biases
-	pub bias_fc: Vec<f32>,
-
 	// value of kT
 	pub kT: f32,
 
@@ -65,13 +60,35 @@ pub struct Dataset {
 
 	// flag for cyclic reaction coordinates
 	pub cyclic: bool,
+
+	// locations of biases
+	bias_x0: Vec<f32>,
+
+	// force constants of biases
+	bias_fc: Vec<f32>,
+
+	// bias value cache
+	bias: RefCell<Vec<Option<f32>>>
 }
 
 impl Dataset {
 	
 	pub fn new(num_bins: usize, bin_width: f32, hist_min: f32, hist_max: f32, bias_x0: Vec<f32>, bias_fc: Vec<f32>, kT: f32, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
 		let num_windows = histograms.len();
-		Dataset{num_windows, num_bins, bin_width, hist_min, hist_max, bias_x0, bias_fc, kT, histograms, cyclic}
+		let bias: RefCell<Vec<Option<f32>>> = RefCell::new(vec![None; num_bins*num_windows]);
+		Dataset{
+			num_windows,
+			num_bins,
+			bin_width,
+			hist_min,
+			hist_max, 
+			kT,
+			histograms,
+			cyclic,
+			bias_x0,
+			bias_fc,
+			bias,
+		}
 	}
 
 	
@@ -79,15 +96,24 @@ impl Dataset {
 	// if cyclic is true, lowest and highest bins are assumed to be
 	// neighbors
 	pub fn calc_bias(&self, bin: usize, window: usize) -> f32 {
-		let x = self.get_x_for_bin(bin);
-		let mut dx = (x-self.bias_x0[window]).abs();
-		if self.cyclic {
-			let hist_len = self.hist_max-self.hist_min;
-			if dx > 0.5*hist_len {
-				dx -= hist_len;
+		let ndx = bin + (self.num_bins*window);
+		let mut cache = self.bias.borrow_mut();
+		match cache[ndx] {
+			Some(val) => val,
+			None => {
+				let x = self.get_x_for_bin(bin);
+				let mut dx = (x-self.bias_x0[window]).abs();
+				if self.cyclic {
+					let hist_len = self.hist_max-self.hist_min;
+					if dx > 0.5*hist_len {
+						dx -= hist_len;
+					}
+				}
+				let bias = 0.5*self.bias_fc[window]*dx*dx;
+				cache[ndx] = Some(bias);
+				bias
 			}
 		}
-		0.5*self.bias_fc[window]*dx*dx
 	}
 
 	// get center x value for a bin 
