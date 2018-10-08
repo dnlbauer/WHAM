@@ -29,8 +29,8 @@ pub fn vprintln(s: String, verbose: bool) {
 // Read input data into a histogram set by iterating over input files
 // given in the metadata file
 pub fn read_data(cfg: &Config) -> Option<Dataset> {
-	let mut bias_x0: Vec<f32> = Vec::new();
-	let mut bias_fc: Vec<f32> = Vec::new();
+	let mut bias_x0: Vec<f64> = Vec::new();
+	let mut bias_fc: Vec<f64> = Vec::new();
     let mut histograms: Vec<Histogram> = Vec::new();
 	let kT = cfg.temperature * k_B;
     let f = File::open(&cfg.metadata_file).unwrap_or_else(|x| {
@@ -45,7 +45,7 @@ pub fn read_data(cfg: &Config) -> Option<Dataset> {
         if line.starts_with("#") || line.len() == 0 {
     		continue;
     	}
-    	let (path, x0, k) = scan_fmt!(&line, "{} {} {}", String, f32, f32);
+    	let (path, x0, k) = scan_fmt!(&line, "{} {} {}", String, f64, f64);
         
         let path = get_relative_path(&cfg.metadata_file, &path.unwrap());
         match read_window_file(&path, cfg) {
@@ -72,7 +72,7 @@ pub fn read_data(cfg: &Config) -> Option<Dataset> {
     }
     
     if histograms.len() > 0 {
-        let bin_width = (cfg.hist_max - cfg.hist_min)/(cfg.num_bins as f32);
+        let bin_width = (cfg.hist_max - cfg.hist_min)/(cfg.num_bins as f64);
         Some(Dataset::new(cfg.num_bins, bin_width, cfg.hist_min, cfg.hist_max, bias_x0, bias_fc, kT, histograms, cfg.cyclic)) 
     } else {
         None
@@ -88,7 +88,7 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
     let buf = BufReader::new(&f);
     
     let mut global_hist = vec![0.0; cfg.num_bins];
-    let bin_width = (cfg.hist_max - cfg.hist_min)/(cfg.num_bins as f32);
+    let bin_width = (cfg.hist_max - cfg.hist_min)/(cfg.num_bins as f64);
     for l in buf.lines() {
     	let line = l.unwrap();
         // skip comments and empty lines
@@ -96,7 +96,7 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
     		continue;
     	}
 
-    	let (_, x) = scan_fmt!(&line, "{} {}", f32, f32);
+    	let (_, x) = scan_fmt!(&line, "{} {}", f64, f64);
 
     	match x {
     		Some(x) => {
@@ -130,12 +130,12 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
         global_hist.truncate(max_bin+1);
         global_hist.drain(..min_bin);
         
-        let num_points: f32 = global_hist.iter().sum();
+        let num_points: f64 = global_hist.iter().sum();
         Some(Histogram::new(min_bin, max_bin, num_points as u32, global_hist))
     }
 }
 
-pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f32>, prob: &Vec<f32>) -> Result<(), Box<Error>> {
+pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f64>, prob: &Vec<f64>) -> Result<(), Box<Error>> {
      let mut output = File::create(out_file)?;
      writeln!(output, "#{:8}\t{:8}\t{:8}", "x", "Free Energy", "Probability");
      for bin in 0..free.len() {
@@ -191,7 +191,7 @@ mod tests {
         assert_eq!(cfg.num_bins, ds.num_bins);
         assert_eq!(cfg.hist_min, ds.hist_min);
         assert_eq!(cfg.hist_max, ds.hist_max);
-        let expected_bin_width = (cfg.hist_max - cfg.hist_min)/cfg.num_bins as f32;
+        let expected_bin_width = (cfg.hist_max - cfg.hist_min)/cfg.num_bins as f64;
         assert_eq!(expected_bin_width, ds.bin_width);
         // bias fields are private  
         // assert_eq!(vec![0.0, 1.0], ds.bias_x0);  

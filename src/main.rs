@@ -13,12 +13,12 @@ fn cli() -> Result<Config, Box<Error>> {
 	let yaml = load_yaml!("cli.yml");
 	let matches = App::from_yaml(yaml).get_matches();
 	let metadata_file = matches.value_of("metadata").unwrap().to_string();
-	let hist_min: f32 = matches.value_of("min_hist").unwrap().parse()?;
-	let hist_max: f32 = matches.value_of("max_hist").unwrap().parse()?;
+	let hist_min: f64 = matches.value_of("min_hist").unwrap().parse()?;
+	let hist_max: f64 = matches.value_of("max_hist").unwrap().parse()?;
 	let num_bins: usize = matches.value_of("bins").unwrap().parse()?;
 	let verbose: bool = matches.is_present("verbose");
-	let temperature: f32 = matches.value_of("temperature").unwrap().parse()?;
-	let tolerance: f32 = matches.value_of("tolerance").unwrap_or("0.000001").parse()?;
+	let temperature: f64 = matches.value_of("temperature").unwrap().parse()?;
+	let tolerance: f64 = matches.value_of("tolerance").unwrap_or("0.000001").parse()?;
 	let max_iterations: usize = matches.value_of("iterations").unwrap_or("100000").parse()?;
 	let cyclic: bool = matches.is_present("cyclic");
 	let output = matches.value_of("output").unwrap_or("wham.out").to_string();

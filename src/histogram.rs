@@ -14,18 +14,18 @@ pub struct Histogram {
 	pub num_points: u32,
 
 	// histogram bins
-	pub bins: Vec<f32>
+	pub bins: Vec<f64>
 }
 
 impl Histogram {
-	pub fn new(first: usize, last: usize, num_points: u32, bins: Vec<f32>) -> Histogram {
+	pub fn new(first: usize, last: usize, num_points: u32, bins: Vec<f64>) -> Histogram {
 		assert_eq!(last-first+1, bins.len(), "histogram length does not match first/last.");
 		Histogram {first, last, num_points, bins}
 	}
 
 	// Returns the value of a bin if the bin is present in this
 	// histogram
-	pub fn get_bin_count(&self, bin: usize) -> Option<f32> {
+	pub fn get_bin_count(&self, bin: usize) -> Option<f64> {
 		if bin < self.first || bin > self.last {
 			None
 		} else {
@@ -44,16 +44,16 @@ pub struct Dataset {
 	pub num_bins: usize,
 
 	// min value of the histogram
-	pub hist_min: f32,
+	pub hist_min: f64,
 
 	// max value of the histogram
-	pub hist_max: f32,
+	pub hist_max: f64,
 
 	// width of a bin in unit of x
-	pub bin_width: f32,
+	pub bin_width: f64,
 
 	// value of kT
-	pub kT: f32,
+	pub kT: f64,
 
 	// histogram for each window
 	pub histograms: Vec<Histogram>,
@@ -62,20 +62,20 @@ pub struct Dataset {
 	pub cyclic: bool,
 
 	// locations of biases
-	bias_x0: Vec<f32>,
+	bias_x0: Vec<f64>,
 
 	// force constants of biases
-	bias_fc: Vec<f32>,
+	bias_fc: Vec<f64>,
 
 	// bias value cache
-	bias: RefCell<Vec<Option<f32>>>
+	bias: RefCell<Vec<Option<f64>>>
 }
 
 impl Dataset {
 	
-	pub fn new(num_bins: usize, bin_width: f32, hist_min: f32, hist_max: f32, bias_x0: Vec<f32>, bias_fc: Vec<f32>, kT: f32, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
+	pub fn new(num_bins: usize, bin_width: f64, hist_min: f64, hist_max: f64, bias_x0: Vec<f64>, bias_fc: Vec<f64>, kT: f64, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
 		let num_windows = histograms.len();
-		let bias: RefCell<Vec<Option<f32>>> = RefCell::new(vec![None; num_bins*num_windows]);
+		let bias: RefCell<Vec<Option<f64>>> = RefCell::new(vec![None; num_bins*num_windows]);
 		Dataset{
 			num_windows,
 			num_bins,
@@ -95,7 +95,7 @@ impl Dataset {
 	// Harmonic bias calculation: bias = 0.5*k(dx)^2
 	// if cyclic is true, lowest and highest bins are assumed to be
 	// neighbors
-	pub fn calc_bias(&self, bin: usize, window: usize) -> f32 {
+	pub fn calc_bias(&self, bin: usize, window: usize) -> f64 {
 		let ndx = bin + (self.num_bins*window);
 		let mut cache = self.bias.borrow_mut();
 		match cache[ndx] {
@@ -117,8 +117,8 @@ impl Dataset {
 	}
 
 	// get center x value for a bin 
-	pub fn get_x_for_bin(&self, bin: usize) -> f32 {
-		self.hist_min + self.bin_width * ((bin as f32) + 0.5)
+	pub fn get_x_for_bin(&self, bin: usize) -> f64 {
+		self.hist_min + self.bin_width * ((bin as f64) + 0.5)
 	}
 
 }
@@ -212,8 +212,8 @@ mod tests {
 	#[test]
 	fn get_x_for_bin() {
 		let ds = build_hist_set();
-		let expected: Vec<f32> = vec![0,1,2,3,4,5,6,7,8].iter()
-				.map(|x| *x as f32 + 0.5).collect(); 
+		let expected: Vec<f64> = vec![0,1,2,3,4,5,6,7,8].iter()
+				.map(|x| *x as f64 + 0.5).collect(); 
 		for i in 0..9 {
 			assert_eq!(expected[i], ds.get_x_for_bin(i));
 		}
