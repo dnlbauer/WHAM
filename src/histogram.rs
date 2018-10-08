@@ -5,16 +5,16 @@ use std::cell::RefCell;
 #[derive(Debug)]
 pub struct Histogram {
 	// offset of this histogram bins from the global histogram
-	pub first: usize,
+	first: usize,
 
 	// offset of the last element of the histogram. TODO required?
-	pub last: usize,
+	last: usize,
 
 	// total number of data points stored in the histogram
 	pub num_points: u32,
 
 	// histogram bins
-	pub bins: Vec<f64>
+	bins: Vec<f64>
 }
 
 impl Histogram {
@@ -44,13 +44,13 @@ pub struct Dataset {
 	pub num_bins: usize,
 
 	// min value of the histogram
-	pub hist_min: f64,
+	hist_min: f64,
 
 	// max value of the histogram
-	pub hist_max: f64,
+	hist_max: f64,
 
 	// width of a bin in unit of x
-	pub bin_width: f64,
+	bin_width: f64,
 
 	// value of kT
 	pub kT: f64,

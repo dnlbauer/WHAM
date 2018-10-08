@@ -170,13 +170,12 @@ mod tests {
         let cfg = cfg();
         let h = super::read_window_file(&f, &cfg).unwrap();
         println!("{:?}", h);
-        assert_eq!(1, h.first);
-        assert_eq!(6, h.last);
+        // assert_eq!(1, h.first);
+        // assert_eq!(6, h.last);
         assert_eq!(11, h.num_points);
-        assert_eq!(2.0, h.bins[0]);
-        assert_eq!(2.0, h.bins[2]);
-        assert_eq!(2.0, h.bins[4]);
-        assert_eq!(1.0, h.bins[5]);      
+        assert_eq!(2.0, h.get_bin_count(1).unwrap());
+        assert_eq!(2.0, h.get_bin_count(2).unwrap());
+        assert_eq!(1.0, h.get_bin_count(6).unwrap());      
     }
 
 
@@ -189,11 +188,11 @@ mod tests {
         println!("{:?}", ds);
         assert_eq!(2, ds.num_windows);
         assert_eq!(cfg.num_bins, ds.num_bins);
-        assert_eq!(cfg.hist_min, ds.hist_min);
-        assert_eq!(cfg.hist_max, ds.hist_max);
-        let expected_bin_width = (cfg.hist_max - cfg.hist_min)/cfg.num_bins as f64;
-        assert_eq!(expected_bin_width, ds.bin_width);
-        // bias fields are private  
+        // fields are private  
+        // assert_eq!(cfg.hist_min, ds.hist_min);
+        // assert_eq!(cfg.hist_max, ds.hist_max);
+        // let expected_bin_width = (cfg.hist_max - cfg.hist_min)/cfg.num_bins as f64;
+        // assert_eq!(expected_bin_width, ds.bin_width);
         // assert_eq!(vec![0.0, 1.0], ds.bias_x0);  
         // assert_eq!(vec![100.0, 200.0], ds.bias_fc);
         assert_eq!(cfg.temperature * k_B, ds.kT);
