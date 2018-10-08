@@ -40,15 +40,11 @@ impl fmt::Display for Config {
 
 // Checks for convergence between two WHAM iterations. WHAM is considered as
 // converged if the absolute difference for the calculated bias offset is 
-// smaller then a tolerance value for each simulation window
+// smaller then a tolerance value for every simulation window.
 fn is_converged(old_F: &Vec<f32>, new_F: &Vec<f32>, tolerance: f32) -> bool {
-	for i in 0..old_F.len() {
-		let error = (new_F[i] - old_F[i]).abs();
-		if error > tolerance {
-			return false
-		}
-	}
-	true
+	!new_F.iter().zip(old_F.iter())
+            .map(|x| { (x.0-x.1).abs() })
+            .any(|diff| { diff > tolerance })
 }
 
 // estimate the probability of a bin of the histogram set based on F values
@@ -71,12 +67,11 @@ fn calc_bin_probability(bin: usize, ds: &Dataset, F: &Vec<f32>) -> f32 {
 // estimate the bias offset F of the histogram based on given probabilities
 // This evaluates the second WHAM equation for each window
 fn calc_window_F(window: usize, ds: &Dataset, P: &Vec<f32>) -> f32 {
-	let mut ln_sum = 0.0;
-	for bin in 0..ds.num_bins {
-		let bias = ds.calc_bias(bin, window);
-		ln_sum += P[bin] * (-bias/ds.kT).exp()
-	}
-	-ds.kT * ln_sum.ln()
+	let bf_sum: f32 = (0..ds.num_bins).zip(P.iter()) // zip bins and P
+		.map(|x: (usize, &f32)| { 
+			x.1 * (-ds.calc_bias(x.0, window)/ds.kT).exp() 
+		}).sum();
+	-ds.kT * bf_sum.ln()
 }
 
 // One full WHAM iteration includes calculation of new probabilities P and
@@ -139,10 +134,10 @@ fn perform_wham_iteration(ds: &Dataset, F_prev: &Vec<f32>,F: &mut Vec<f32>, P: &
 	}
 
 	// normalize F
-	let norm = F[0];
-	for window in 0..ds.num_windows {
-		F[window] = F[window] - norm;
-	}	
+	// let norm = F[0];
+	// for window in 0..ds.num_windows {
+	// 	F[window] = F[window] - norm;
+	// }	
 }
 
 // get average difference between two bias offset sets
@@ -173,13 +168,13 @@ fn free_energy(ds: &Dataset, P: &mut Vec<f32>, A: &mut Vec<f32>) {
 	}
 
 	// Normalize P
-	let mut P_sum = 0.0;
-	for bin in 0..ds.num_bins {
-		P_sum += P[bin];
-	}
-	for bin in 0..ds.num_bins {
-		P[bin] /= P_sum;
-	}
+	// let mut P_sum = 0.0;
+	// for bin in 0..ds.num_bins {
+	// 	P_sum += P[bin];
+	// }
+	// for bin in 0..ds.num_bins {
+	// 	P[bin] /= P_sum;
+	// }
 
 
 }
@@ -222,6 +217,15 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
 		}
 	}
 	
+	// Normalize P
+	// let mut P_sum = 0.0;
+	// for bin in 0..histograms.num_bins {
+	// 	P_sum += P[bin];
+	// }
+	// for bin in 0..histograms.num_bins {
+	// 	P[bin] /= P_sum;
+	// }
+
 	// final free energy calculation and state dump
 	println!("Finished. Dumping final PMF");
 	free_energy(&histograms, &mut P, &mut A);
