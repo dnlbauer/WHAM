@@ -29,7 +29,7 @@ pub fn vprintln(s: String, verbose: bool) {
 // Read input data into a histogram set by iterating over input files
 // given in the metadata file
 pub fn read_data(cfg: &Config) -> Option<Dataset> {
-	let mut bias_x0: Vec<f64> = Vec::new();
+	let mut bias_pos: Vec<f64> = Vec::new();
 	let mut bias_fc: Vec<f64> = Vec::new();
     let mut histograms: Vec<Histogram> = Vec::new();
 	let kT = cfg.temperature * k_B;
@@ -45,9 +45,11 @@ pub fn read_data(cfg: &Config) -> Option<Dataset> {
         if line.starts_with("#") || line.len() == 0 {
     		continue;
     	}
-    	let (path, x0, k) = scan_fmt!(&line, "{} {} {}", String, f64, f64);
-        
-        let path = get_relative_path(&cfg.metadata_file, &path.unwrap());
+
+    	let mut split = line.split_whitespace();
+
+        // parse histogram data
+        let path = get_relative_path(&cfg.metadata_file, split.next()?);
         match read_window_file(&path, cfg) {
             Some(h) => {
                 histograms.push(h);
@@ -55,25 +57,37 @@ pub fn read_data(cfg: &Config) -> Option<Dataset> {
             },
             None => {
                 eprintln!("No data points inside histogram boundaries: {}", &path);
-                continue; // goto next iteration and skip adding bias values
+                process::exit(1)
             }
         }
 
-    	bias_x0.push(x0.unwrap_or_else(|| {
-            eprintln!("Failed to read coordinate from: {}", &line);
-            process::exit(1)
-        }));
-    	bias_fc.push(k.unwrap_or_else(|| {
-            eprintln!("Failed to read bias value from: {}", &line);
-            process::exit(1)
-        }));
+        // parse bias force constants and positions
+        for _ in 0..cfg.dimens {
+            match split.next()?.parse() {
+                Ok(x) => bias_pos.push(x),
+                _ => {
+                    eprintln!("Failed to read bias coordinate.");
+                    process::exit(1);
+                }
+            }
+        }
+        for _ in 0..cfg.dimens {
+            match split.next()?.parse() {
+                Ok(x) => bias_fc.push(x),
+                _ => {
+                    eprintln!("Failed to read bias force constant.");
+                    process::exit(1);
+                }
+            }
 
-        
+        }
     }
     
     if histograms.len() > 0 {
-        let bin_width = (cfg.hist_max - cfg.hist_min)/(cfg.num_bins as f64);
-        Some(Dataset::new(cfg.num_bins, bin_width, cfg.hist_min, cfg.hist_max, bias_x0, bias_fc, kT, histograms, cfg.cyclic)) 
+        let bin_width: Vec<f64> = (0..cfg.dimens).map(|idx| {
+            (cfg.hist_max[idx] - cfg.hist_min[idx])/(cfg.num_bins[idx] as f64)
+        }).collect();
+        Some(Dataset::new(cfg.num_bins[0], bin_width[0], cfg.hist_min[0], cfg.hist_max[0], bias_pos, bias_fc, kT, histograms, cfg.cyclic))
     } else {
         None
     }
@@ -87,8 +101,8 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
     });
     let buf = BufReader::new(&f);
     
-    let mut global_hist = vec![0.0; cfg.num_bins];
-    let bin_width = (cfg.hist_max - cfg.hist_min)/(cfg.num_bins as f64);
+    let mut global_hist = vec![0.0; cfg.num_bins[0]];
+    let bin_width = (cfg.hist_max[0] - cfg.hist_min[0])/(cfg.num_bins[0] as f64);
     for l in buf.lines() {
     	let line = l.unwrap();
         // skip comments and empty lines
@@ -100,8 +114,8 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
 
     	match x {
     		Some(x) => {
-    			if x > cfg.hist_min && x < cfg.hist_max {
-    				let bin_ndx = ((x-cfg.hist_min) / bin_width) as usize;
+    			if x > cfg.hist_min[0] && x < cfg.hist_max[0] {
+    				let bin_ndx = ((x-cfg.hist_min[0]) / bin_width) as usize;
                     global_hist[bin_ndx] += 1.0;
     			} 
     		}
@@ -113,7 +127,7 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
     }
 
     let mut max_bin: usize = 0;
-    let mut min_bin: usize =(cfg.num_bins-1) as usize;
+    let mut min_bin: usize =(cfg.num_bins[0]-1) as usize;
     for bin in 0..global_hist.len() {
         if global_hist[bin] != 0.0 && bin > max_bin {
             max_bin = bin;
@@ -150,11 +164,12 @@ mod tests {
     use super::*;
 
     fn cfg() -> Config {
-        Config{
+        Config {
             metadata_file: "tests/data/metadata.dat".to_string(),
-            hist_min: 0.0,
-            hist_max: 3.0,
-            num_bins: 30,
+            hist_min: vec![0.0],
+            hist_max: vec![3.0],
+            num_bins: vec![30],
+            dimens: 1,
             verbose: false,
             tolerance: 0.0,
             max_iterations: 0,
@@ -187,13 +202,13 @@ mod tests {
         let ds = ds.unwrap();
         println!("{:?}", ds);
         assert_eq!(2, ds.num_windows);
-        assert_eq!(cfg.num_bins, ds.num_bins);
+        assert_eq!(cfg.num_bins[0], ds.num_bins[0]);
         // fields are private  
-        // assert_eq!(cfg.hist_min, ds.hist_min);
-        // assert_eq!(cfg.hist_max, ds.hist_max);
-        // let expected_bin_width = (cfg.hist_max - cfg.hist_min)/cfg.num_bins as f64;
+        // assert_eq!(cfg.hist_min[0], ds.hist_min[0]);
+        // assert_eq!(cfg.hist_max[0], ds.hist_max[0]);
+        // let expected_bin_width = (cfg.hist_max[0] - cfg.hist_min[0])/cfg.num_bins[0] as f64;
         // assert_eq!(expected_bin_width, ds.bin_width);
-        // assert_eq!(vec![0.0, 1.0], ds.bias_x0);  
+        // assert_eq!(vec![0.0, 1.0], ds.bias_pos);
         // assert_eq!(vec![100.0, 200.0], ds.bias_fc);
         assert_eq!(cfg.temperature * k_B, ds.kT);
         assert_eq!(2, ds.histograms.len())

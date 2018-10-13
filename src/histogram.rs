@@ -62,7 +62,7 @@ pub struct Dataset {
 	pub cyclic: bool,
 
 	// locations of biases
-	bias_x0: Vec<f64>,
+	bias_pos: Vec<f64>,
 
 	// force constants of biases
 	bias_fc: Vec<f64>,
@@ -73,7 +73,7 @@ pub struct Dataset {
 
 impl Dataset {
 	
-	pub fn new(num_bins: usize, bin_width: f64, hist_min: f64, hist_max: f64, bias_x0: Vec<f64>, bias_fc: Vec<f64>, kT: f64, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
+	pub fn new(num_bins: usize, bin_width: f64, hist_min: f64, hist_max: f64, bias_pos: Vec<f64>, bias_fc: Vec<f64>, kT: f64, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
 		let num_windows = histograms.len();
 		let bias: RefCell<Vec<Option<f64>>> = RefCell::new(vec![None; num_bins*num_windows]);
 		Dataset{
@@ -85,7 +85,7 @@ impl Dataset {
 			kT,
 			histograms,
 			cyclic,
-			bias_x0,
+			bias_pos,
 			bias_fc,
 			bias,
 		}
@@ -102,7 +102,7 @@ impl Dataset {
 			Some(val) => val,
 			None => {
 				let x = self.get_x_for_bin(bin);
-				let mut dx = (x-self.bias_x0[window]).abs();
+				let mut dx = (x-self.bias_pos[window]).abs();
 				if self.cyclic {
 					let hist_len = self.hist_max-self.hist_min;
 					if dx > 0.5*hist_len {

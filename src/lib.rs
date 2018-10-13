@@ -19,9 +19,10 @@ static k_B: f64 = 0.0083144621; // kJ/mol*K
 #[derive(Debug)]
 pub struct Config {
 	pub metadata_file: String,
-	pub hist_min: f64,
-	pub hist_max: f64,
-	pub num_bins: usize,
+	pub hist_min: Vec<f64>,
+	pub hist_max: Vec<f64>,
+	pub num_bins: Vec<usize>,
+	pub dimens: usize,
 	pub verbose: bool,
 	pub tolerance: f64,
 	pub max_iterations: usize,
@@ -32,7 +33,7 @@ pub struct Config {
 
 impl fmt::Display for Config {
 	 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-	 	write!(f, "Metadata={}, hist_min={}, hist_max={}, bins={}\nverbose={}, tolerance={}, iterations={}, temperature={}, cyclic={}" , self.metadata_file, self.hist_min,
+	 	write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?}\nverbose={}, tolerance={}, iterations={}, temperature={}, cyclic={:?}" , self.metadata_file, self.hist_min,
 	 		self.hist_max, self.num_bins, self.verbose, self.tolerance,
 	 		self.max_iterations, self.temperature, self.cyclic)
     }
@@ -95,7 +96,7 @@ fn perform_wham_iteration(ds: &Dataset, F_prev: &Vec<f64>,F: &mut Vec<f64>, P: &
 	// 		}
 	// 		let bias = calc_bias(
 	// 			ds.bias_fc[window],
-	// 			ds.bias_x0[window],
+	// 			ds.bias_pos[window],
 	// 			x);
 	// 		let bf = ((F_prev[window]-bias) / ds.kT).exp();
 	// 		denom += ds.histograms[window].num_points as f64* bf
@@ -105,7 +106,7 @@ fn perform_wham_iteration(ds: &Dataset, F_prev: &Vec<f64>,F: &mut Vec<f64>, P: &
 	// 	for window in 0..ds.num_windows {
 	// 		let bias = calc_bias(
 	// 				ds.bias_fc[window],
-	// 				ds.bias_x0[window],
+	// 				ds.bias_pos[window],
 	// 				x);
 	// 		let bf = (-bias/ds.kT).exp() * P[bin];
 	// 		F[window] += bf;
