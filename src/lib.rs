@@ -40,7 +40,7 @@ impl fmt::Display for Config {
 // Checks for convergence between two WHAM iterations. WHAM is considered as
 // converged if the absolute difference for the calculated bias offset is 
 // smaller then a tolerance value for every simulation window.
-fn is_converged(old_F: &Vec<f64>, new_F: &Vec<f64>, tolerance: f64) -> bool {
+fn is_converged(old_F: &[f64], new_F: &[f64], tolerance: f64) -> bool {
 	!new_F.iter().zip(old_F.iter())
             .map(|x| { (x.0-x.1).abs() })
             .any(|diff| { diff > tolerance })
@@ -48,7 +48,7 @@ fn is_converged(old_F: &Vec<f64>, new_F: &Vec<f64>, tolerance: f64) -> bool {
 
 // estimate the probability of a bin of the histogram set based on F values
 // This evaluates the first WHAM equation for each bin
-fn calc_bin_probability(bin: usize, ds: &Dataset, F: &Vec<f64>) -> f64 {
+fn calc_bin_probability(bin: usize, ds: &Dataset, F: &[f64]) -> f64 {
 	let mut denom_sum: f64 = 0.0;
 	let mut bin_count: f64 = 0.0;
 	for window in 0..ds.num_windows {
@@ -63,8 +63,8 @@ fn calc_bin_probability(bin: usize, ds: &Dataset, F: &Vec<f64>) -> f64 {
 
 // estimate the bias offset F of the histogram based on given probabilities
 // This evaluates the second WHAM equation for each window
-fn calc_window_F(window: usize, ds: &Dataset, P: &Vec<f64>) -> f64 {
-	let bf_sum: f64 = (0..ds.num_bins).zip(P.iter()) // zip bins and P
+fn calc_window_F(window: usize, ds: &Dataset, P: &[f64]) -> f64 {
+    let bf_sum: f64 = (0..ds.num_bins).zip(P.iter()) // zip bins and P
 		.map(|x: (usize, &f64)| { 
 			x.1 * (-ds.calc_bias(x.0, window)/ds.kT).exp() 
 		}).sum();
@@ -74,7 +74,7 @@ fn calc_window_F(window: usize, ds: &Dataset, P: &Vec<f64>) -> f64 {
 // One full WHAM iteration includes calculation of new probabilities P and
 // new bias offsets F based on previous bias offsets F_prev. This updates
 // the values in vectors F and P
-fn perform_wham_iteration(ds: &Dataset, F_prev: &Vec<f64>,F: &mut Vec<f64>, P: &mut Vec<f64>) {
+fn perform_wham_iteration(ds: &Dataset, F_prev: &[f64], F: &mut [f64], P: &mut [f64]) {
 	// reset bias offsets
 	for window in 0..ds.num_windows {
 		F[window] = 0.0;
@@ -113,11 +113,6 @@ fn perform_wham_iteration(ds: &Dataset, F_prev: &Vec<f64>,F: &mut Vec<f64>, P: &
 	// 	F[window] = -ds.kT * F[window].ln();
 	// }
 
-	// let norm = F[0];
-	// for window in 0..ds.num_windows {
-	// 	F[window] = F[window] - norm;
-	// }
-
 	// evaluate first WHAM equation for each bin to
 	// estimage probabilities based on previous offsets (F_prev)
 	for bin in 0..ds.num_bins {
@@ -130,15 +125,10 @@ fn perform_wham_iteration(ds: &Dataset, F_prev: &Vec<f64>,F: &mut Vec<f64>, P: &
 		F[window] = calc_window_F(window, ds, P);
 	}
 
-	// normalize F
-	// let norm = F[0];
-	// for window in 0..ds.num_windows {
-	// 	F[window] = F[window] - norm;
-	// }	
 }
 
 // get average difference between two bias offset sets
-fn diff_avg(F: &Vec<f64>, F_prev: &Vec<f64>) -> f64 {
+fn diff_avg(F: &[f64], F_prev: &[f64]) -> f64 {
 	let mut F_sum: f64 = 0.0;
 	for i in 0..F.len() {
 		F_sum += (F[i]-F_prev[i]).abs()
@@ -148,7 +138,7 @@ fn diff_avg(F: &Vec<f64>, F_prev: &Vec<f64>) -> f64 {
 
 
 // calculate the normalized free energy from normalized probability values
-fn free_energy(ds: &Dataset, P: &mut Vec<f64>, A: &mut Vec<f64>) {
+fn free_energy(ds: &Dataset, P: &[f64], A: &mut [f64]) {
 	let mut bin_min = f64::MAX;
 
 	// Free energy calculation
@@ -163,17 +153,6 @@ fn free_energy(ds: &Dataset, P: &mut Vec<f64>, A: &mut Vec<f64>) {
 	for bin in 0..ds.num_bins {
 		A[bin] -= bin_min;
 	}
-
-	// Normalize P
-	// let mut P_sum = 0.0;
-	// for bin in 0..ds.num_bins {
-	// 	P_sum += P[bin];
-	// }
-	// for bin in 0..ds.num_bins {
-	// 	P[bin] /= P_sum;
-	// }
-
-
 }
 
 pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
@@ -237,7 +216,7 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
 	Ok(())
 }
 
-fn dump_state(ds: &Dataset, F: &Vec<f64>, F_prev: &Vec<f64>, P: &Vec<f64>, A: &Vec<f64>) {
+fn dump_state(ds: &Dataset, F: &[f64], F_prev: &[f64], P: &[f64], A: &[f64]) {
 	let out = std::io::stdout();
     let mut lock = out.lock();
 	writeln!(lock, "# PMF");

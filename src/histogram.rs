@@ -78,7 +78,7 @@ impl Dataset {
 		}
 	}
 
-	fn expand_index(&self, bin: usize, lengths: &Vec<usize>) -> Vec<usize> {
+	fn expand_index(&self, bin: usize, lengths: &[usize]) -> Vec<usize> {
     	let mut tmp = bin;
     	let mut idx = vec![0; lengths.len()];
     	for dimen in (1..lengths.len()).rev() {
