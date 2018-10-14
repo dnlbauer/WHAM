@@ -1,7 +1,7 @@
 [package]
 name = "wham"
 version = "0.1.0"
-authors = ["danijoo <danijob88@googlemail.com>"]
+authors = ["D. Bauer <bauer@bio.tu-darmstadt.de>"]
 
 [dependencies]
 clap = {version="2.32.0", features=['yaml']}

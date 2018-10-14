@@ -21,11 +21,11 @@ fn cli() -> Result<Config, Box<Error>> {
     let cyclic: bool = matches.is_present("cyclic");
 
 	let hist_min: Vec<f64> = matches.value_of("min_hist").unwrap()
-        .split(':').map(|x| { x.parse().unwrap() }).collect();
+        .split(',').map(|x| { x.parse().unwrap() }).collect();
 	let hist_max: Vec<f64> = matches.value_of("max_hist").unwrap()
-        .split(':').map(|x| { x.parse().unwrap() }).collect();
+        .split(',').map(|x| { x.parse().unwrap() }).collect();
 	let num_bins: Vec<usize> = matches.value_of("bins").unwrap()
-        .split(':').map(|x| { x.parse().unwrap() }).collect();
+        .split(',').map(|x| { x.parse().unwrap() }).collect();
 
     if num_bins.len() != hist_max.len() || num_bins.len() != hist_max.len() {
         eprintln!("Input dimensions do not match (min: {}, max: {}, bins: {})",

@@ -1,48 +1,68 @@
 name: wham
 version: "0.1.0"
-author: D. Bauer <bauer@cbs.tu-darmstadt.de>
-about: WHAM analysis
+author: D. Bauer <bauer@bio.tu-darmstadt.de>
+about: |
+  wham is a fast implementation of the weighted histogram analysis method (WHAM) written in Rust. It currently supports potential of mean force (PMF) calculations in multiple dimensions at constant temperature.
+
+  Metadata file format:
+      /path/to/timeseries_file1  x_1  x_2  x_N  fc_1  fc_2  fc_N
+      /path/to/timeseries_file2  x_1  x_2  x_N  fc_1  fc_2  fc_N
+      /path/to/timeseries_file3  x_1  x_2  x_N  fc_1  fc_2  fc_N
+  The first column is a path to a timeseries file _relative_ to the metadata file (see below). This is followed by the position of the umbrella potential x in N dimensions and the force constant fc in each dimension. Lines starting with a # are treated as comments and will not be parsed.
+
+  Timeseries file format:
+      time  x_1  x_2  x_N
+      time  x_1  x_2  x_N
+      time  x_1  x_2  x_N
+  The first column will be ignored and is followed by N reaction coordinates x.
+
+  Shipped under the GPLv3 license.
 args:
     - metadata:
         short: f
         long: file
         value_name: METADATA
-        help: Sets the metadata file
         takes_value: true
         required: true
+        help: Path to the metadata file.
     - min_hist:
         long: min
-        value_name: HIST_MIN 
+        value_name: HIST_MIN
         takes_value: true
         required: true
         allow_hyphen_values: true
+        help: Histogram minima (comma separated for multiple dimensions).
     - max_hist:
         long: max
-        value_name: HIST_MAX 
+        value_name: HIST_MAX
         takes_value: true
         required: true
         allow_hyphen_values: true
+        help: Histogram maxima (comma separated)
     - bins:
         short: b
         long: bins
         value_name: BINS
         takes_value: true
         required: true
+        help: Number of histogram bins (comma separated).
     - tolerance:
         short: t
         long: tolerance
         value_name: TOLERANCE
         takes_value: true
         required: false
+        help: Abortion criteria for WHAM calculation. WHAM stops if abs(F_new - F_old) < tolerance (defaults to 0.000001).
     - iterations:
         short: i
         long: iterations
         value_name: ITERATIONS
         takes_value: true
         required: false
+        help: Stop WHAM after this many iterations without convergence (defaults to 100,000).
     - cyclic:
         long: cyclic
-        help: For periodic reaction coordinates. If this is set, the first and last coordinate bin will be assumed to be neighbors for the bias calculation.        
+        help: For periodic reaction coordinates. If this is set, the first and last coordinate bin in each dimension are treated as neighbors for the bias calculation.
     - verbose:
         short: v
         long: verbose
@@ -57,7 +77,6 @@ args:
     - output:
         short: o
         long: output
-        help: Free energy output file (defaults to "wham.out")
+        help: Free energy output file (defaults to wham.out)
         takes_value: true
         required: false
-        
