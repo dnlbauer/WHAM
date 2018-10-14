@@ -5,7 +5,7 @@ pub mod histogram;
 
 use std::error::Error;
 use std::result::Result;
-use histogram::{Dataset,Histogram};
+use histogram::Dataset;
 use std::f64;
 use std::fmt;
 use std::io::prelude::*;
@@ -49,15 +49,15 @@ fn is_converged(old_F: &[f64], new_F: &[f64], tolerance: f64) -> bool {
 // estimate the probability of a bin of the histogram set based on F values
 // This evaluates the first WHAM equation for each bin
 fn calc_bin_probability(bin: usize, ds: &Dataset, F: &[f64]) -> f64 {
-	let mut denom_sum: f64 = 0.0;
+    let mut denom_sum: f64 = 0.0;
 	let mut bin_count: f64 = 0.0;
-	for window in 0..ds.num_windows {
-		let h: &Histogram = &ds.histograms[window];
+	for (window, h) in ds.histograms.iter().enumerate() {
 		bin_count += h.bins[bin];
 		let bias = ds.calc_bias(bin, window);
 		let bias_offset = ((F[window] - bias) / ds.kT).exp();
 		denom_sum += (h.num_points as f64) * bias_offset;
 	}
+
 	bin_count / denom_sum
 }
 
@@ -65,8 +65,12 @@ fn calc_bin_probability(bin: usize, ds: &Dataset, F: &[f64]) -> f64 {
 // This evaluates the second WHAM equation for each window
 fn calc_window_F(window: usize, ds: &Dataset, P: &[f64]) -> f64 {
     let bf_sum: f64 = (0..ds.num_bins).zip(P.iter()) // zip bins and P
-		.map(|x: (usize, &f64)| { 
-			x.1 * (-ds.calc_bias(x.0, window)/ds.kT).exp() 
+		.filter_map(|count_and_prob: (usize, &f64)| {
+            if count_and_prob.1 == &0.0 { // skip zeros for speed
+                None
+            } else {
+                Some(count_and_prob.1 * (-ds.calc_bias(count_and_prob.0, window) / ds.kT).exp())
+            }
 		}).sum();
 	-ds.kT * bf_sum.ln()
 }
