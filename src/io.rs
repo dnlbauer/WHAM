@@ -143,16 +143,16 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
     // read and parse each timeseries line
     let mut line = String::new();
     while buf.read_line(&mut line).unwrap() > 0 {
+        // skip comments and empty lines
+        if line.starts_with("#") || line.starts_with("@") || line.len() == 0 {
+            line.clear();
+            continue;
+        }
+
         {
-            // skip comments and empty lines
-            if line.starts_with("#") || line.starts_with("@") || line.len() == 0 {
-                continue;
-            }
-
             let mut split = line.split_whitespace();
+
             split.next(); // skip time/step column
-
-
             let values: Vec<f64> = (0..cfg.dimens).collect::<Vec<usize>>().iter().map(|_| {
                 split.next().unwrap().parse::<f64>().unwrap()
             }).collect();
