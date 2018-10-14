@@ -129,7 +129,7 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
         eprintln!("Failed to read sample data from {}. {}", window_file, x);
         process::exit(1)
     });
-    let buf = BufReader::new(&f);
+    let mut buf = BufReader::new(&f);
 
     // total number of bins is the product of all dimensions length
     let total_bins = cfg.num_bins.iter().fold(1, |s, &x| { s*x });
@@ -141,30 +141,32 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
         }).collect();
 
     // read and parse each timeseries line
-    for l in buf.lines() {
-    	let line = l.unwrap();
+    let mut line = String::new();
+    while buf.read_line(&mut line).unwrap() > 0 {
+        {
+            // skip comments and empty lines
+            if line.starts_with("#") || line.starts_with("@") || line.len() == 0 {
+                continue;
+            }
 
-        // skip comments and empty lines
-        if line.starts_with("#") || line.starts_with("@") || line.len() == 0 {
-    		continue;
-    	}
-
-    	let mut split = line.split_whitespace();
-        split.next(); // skip time/step column
+            let mut split = line.split_whitespace();
+            split.next(); // skip time/step column
 
 
-        let values: Vec<f64> = (0..cfg.dimens).collect::<Vec<usize>>().iter().map(|_| {
-            split.next().unwrap().parse::<f64>().unwrap()
-        }).collect();
-
-        if is_in_hist_boundaries(&values, cfg) {
-            let bin_indeces = (0..cfg.dimens).map(|dimen: usize| {
-                let val = values[dimen];
-                ((val-cfg.hist_min[dimen]) / bin_width[dimen]) as usize
+            let values: Vec<f64> = (0..cfg.dimens).collect::<Vec<usize>>().iter().map(|_| {
+                split.next().unwrap().parse::<f64>().unwrap()
             }).collect();
-            let index = flat_index(&bin_indeces, &cfg.num_bins);
-            hist[index] += 1.0;
+
+            if is_in_hist_boundaries(&values, cfg) {
+                let bin_indeces = (0..cfg.dimens).map(|dimen: usize| {
+                    let val = values[dimen];
+                    ((val - cfg.hist_min[dimen]) / bin_width[dimen]) as usize
+                }).collect();
+                let index = flat_index(&bin_indeces, &cfg.num_bins);
+                hist[index] += 1.0;
+            }
         }
+        line.clear();
     }
 
     let num_points: f64 = hist.iter().sum();
