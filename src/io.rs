@@ -3,7 +3,7 @@ use super::histogram::Histogram;
 use super::Config;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufReader;
+use std::io::{BufReader,BufWriter};
 use k_B;
 use std::process;
 use std::option::Option;
@@ -176,13 +176,14 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
 
 // TODO multidimensional output
 pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f64>, prob: &Vec<f64>) -> Result<(), Box<Error>> {
-    let mut output = File::create(out_file)?;
-    writeln!(output, "#{}\t{}\t{}", "x", "Free Energy", "Probability"); // TODO better format (coord1, coord2..)
+    let output = File::create(out_file)?;
+    let mut buf = BufWriter::new(output);
+    writeln!(buf, "#{}\t{}\t{}", "x", "Free Energy", "Probability"); // TODO better format (coord1, coord2..)
     for bin in 0..free.len() {
         let coords = ds.get_coords_for_bin(bin);
         let coords_str: String = coords.iter().map(|c| {format!("{:8.6}", c)})
             .collect::<Vec<String>>().join("\t");
-        writeln!(output, "{}\t{:8.6}\t{:8.6}", coords_str, free[bin], prob[bin])?;
+        writeln!(buf, "{}\t{:8.6}\t{:8.6}", coords_str, free[bin], prob[bin])?;
     }
     Ok(())
 }

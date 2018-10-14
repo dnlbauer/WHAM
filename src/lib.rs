@@ -8,6 +8,7 @@ use std::result::Result;
 use histogram::{Dataset,Histogram};
 use std::f64;
 use std::fmt;
+use std::io::prelude::*;
 
 #[allow(non_upper_case_globals)]
 static k_B: f64 = 0.0083144621; // kJ/mol*K
@@ -237,16 +238,18 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
 }
 
 fn dump_state(ds: &Dataset, F: &Vec<f64>, F_prev: &Vec<f64>, P: &Vec<f64>, A: &Vec<f64>) {
-	println!("# PMF");
-	println!("#x\t\tFree Energy\t\tP(x)");
+	let out = std::io::stdout();
+    let mut lock = out.lock();
+	writeln!(lock, "# PMF");
+	writeln!(lock, "#x\t\tFree Energy\t\tP(x)");
 	for bin in 0..ds.num_bins {
 		let x = ds.get_coords_for_bin(bin)[0]; // TODO
-		println!("{:9.5}\t{:9.5}\t{:9.5}", x, A[bin], P[bin]);
+		writeln!(lock, "{:9.5}\t{:9.5}\t{:9.5}", x, A[bin], P[bin]);
 	}
-	println!("# Bias offsets");
-	println!("#Window\t\tF\t\tdF");
+	writeln!(lock, "# Bias offsets");
+	writeln!(lock, "#Window\t\tF\t\tdF");
 	for window in 0..ds.num_windows {
-		println!("{}\t{:9.5}\t{:8.8}", window, F[window], (F[window]-F_prev[window]).abs());
+		writeln!(lock, "{}\t{:9.5}\t{:8.8}", window, F[window], (F[window]-F_prev[window]).abs());
 	}
 }
 
