@@ -1,8 +1,5 @@
 #![allow(non_snake_case)]
 
-#[macro_use]
-extern crate scan_fmt;
-
 pub mod io;
 pub mod histogram;
 
@@ -19,9 +16,10 @@ static k_B: f64 = 0.0083144621; // kJ/mol*K
 #[derive(Debug)]
 pub struct Config {
 	pub metadata_file: String,
-	pub hist_min: f64,
-	pub hist_max: f64,
-	pub num_bins: usize,
+	pub hist_min: Vec<f64>,
+	pub hist_max: Vec<f64>,
+	pub num_bins: Vec<usize>,
+	pub dimens: usize,
 	pub verbose: bool,
 	pub tolerance: f64,
 	pub max_iterations: usize,
@@ -32,7 +30,7 @@ pub struct Config {
 
 impl fmt::Display for Config {
 	 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-	 	write!(f, "Metadata={}, hist_min={}, hist_max={}, bins={}\nverbose={}, tolerance={}, iterations={}, temperature={}, cyclic={}" , self.metadata_file, self.hist_min,
+	 	write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?}\nverbose={}, tolerance={}, iterations={}, temperature={}, cyclic={:?}" , self.metadata_file, self.hist_min,
 	 		self.hist_max, self.num_bins, self.verbose, self.tolerance,
 	 		self.max_iterations, self.temperature, self.cyclic)
     }
@@ -54,9 +52,7 @@ fn calc_bin_probability(bin: usize, ds: &Dataset, F: &Vec<f64>) -> f64 {
 	let mut bin_count: f64 = 0.0;
 	for window in 0..ds.num_windows {
 		let h: &Histogram = &ds.histograms[window];
-		if let Some(count) = h.get_bin_count(bin) {
-			bin_count += count;
-		}
+		bin_count += h.bins[bin];
 		let bias = ds.calc_bias(bin, window);
 		let bias_offset = ((F[window] - bias) / ds.kT).exp();
 		denom_sum += (h.num_points as f64) * bias_offset;
@@ -95,7 +91,7 @@ fn perform_wham_iteration(ds: &Dataset, F_prev: &Vec<f64>,F: &mut Vec<f64>, P: &
 	// 		}
 	// 		let bias = calc_bias(
 	// 			ds.bias_fc[window],
-	// 			ds.bias_x0[window],
+	// 			ds.bias_pos[window],
 	// 			x);
 	// 		let bf = ((F_prev[window]-bias) / ds.kT).exp();
 	// 		denom += ds.histograms[window].num_points as f64* bf
@@ -105,7 +101,7 @@ fn perform_wham_iteration(ds: &Dataset, F_prev: &Vec<f64>,F: &mut Vec<f64>, P: &
 	// 	for window in 0..ds.num_windows {
 	// 		let bias = calc_bias(
 	// 				ds.bias_fc[window],
-	// 				ds.bias_x0[window],
+	// 				ds.bias_pos[window],
 	// 				x);
 	// 		let bf = (-bias/ds.kT).exp() * P[bin];
 	// 		F[window] += bf;
@@ -244,7 +240,7 @@ fn dump_state(ds: &Dataset, F: &Vec<f64>, F_prev: &Vec<f64>, P: &Vec<f64>, A: &V
 	println!("# PMF");
 	println!("#x\t\tFree Energy\t\tP(x)");
 	for bin in 0..ds.num_bins {
-		let x = ds.get_x_for_bin(bin);
+		let x = ds.get_coords_for_bin(bin)[0]; // TODO
 		println!("{:9.5}\t{:9.5}\t{:9.5}", x, A[bin], P[bin]);
 	}
 	println!("# Bias offsets");
@@ -273,8 +269,8 @@ mod tests {
 	}
 
 	fn create_test_ds() -> Dataset {
-		let h1 = Histogram::new(0, 2, 10, vec![3.0, 4.0, 3.0]);
-		let h2 = Histogram::new(0, 3, 20, vec![3.0, 2.0, 5.0, 10.0]);
+		let h1 = Histogram::new(10, vec![0.0, 0.0, 3.0, 4.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+		let h2 = Histogram::new(20, vec![0.0, 0.0, 0.0, 3.0, 2.0, 5.0, 10.0, 0.0, 0.0, 0.0, 0.0]);
 		Dataset::new(4, 1.0, 0.0, 4.0, vec![1.0, 2.0], vec![10.0, 10.0], 2.479, vec![h1, h2], false)
 	}
 

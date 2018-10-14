@@ -29,25 +29,36 @@ pub fn vprintln(s: String, verbose: bool) {
 // Read input data into a histogram set by iterating over input files
 // given in the metadata file
 pub fn read_data(cfg: &Config) -> Option<Dataset> {
-	let mut bias_x0: Vec<f64> = Vec::new();
+	let mut bias_pos: Vec<f64> = Vec::new();
 	let mut bias_fc: Vec<f64> = Vec::new();
     let mut histograms: Vec<Histogram> = Vec::new();
+
 	let kT = cfg.temperature * k_B;
+    let bin_width: Vec<f64> = (0..cfg.dimens).map(|idx| {
+            (cfg.hist_max[idx] - cfg.hist_min[idx])/(cfg.num_bins[idx] as f64)
+        }).collect();
+    let num_bins = cfg.num_bins.iter().fold(1, |state, &bins| state*bins);
+    let dimens_length = cfg.num_bins.clone();
+
     let f = File::open(&cfg.metadata_file).unwrap_or_else(|x| {
         eprintln!("Failed to read metadata from {}. {}", &cfg.metadata_file, x);
         process::exit(1)
-        });
+    });
     let buf = BufReader::new(&f);
 
+    // read each metadata file line and parse it
     for l in buf.lines() {
     	let line = l.unwrap();
+
         // skip comments and empty lines
         if line.starts_with("#") || line.len() == 0 {
     		continue;
     	}
-    	let (path, x0, k) = scan_fmt!(&line, "{} {} {}", String, f64, f64);
-        
-        let path = get_relative_path(&cfg.metadata_file, &path.unwrap());
+
+    	let mut split = line.split_whitespace();
+
+        // parse histogram data
+        let path = get_relative_path(&cfg.metadata_file, split.next()?);
         match read_window_file(&path, cfg) {
             Some(h) => {
                 histograms.push(h);
@@ -55,28 +66,61 @@ pub fn read_data(cfg: &Config) -> Option<Dataset> {
             },
             None => {
                 eprintln!("No data points inside histogram boundaries: {}", &path);
-                continue; // goto next iteration and skip adding bias values
+                process::exit(1)
             }
         }
 
-    	bias_x0.push(x0.unwrap_or_else(|| {
-            eprintln!("Failed to read coordinate from: {}", &line);
-            process::exit(1)
-        }));
-    	bias_fc.push(k.unwrap_or_else(|| {
-            eprintln!("Failed to read bias value from: {}", &line);
-            process::exit(1)
-        }));
+        // parse bias force constants and positions
+        for _ in 0..cfg.dimens {
+            match split.next()?.parse() {
+                Ok(x) => bias_pos.push(x),
+                _ => {
+                    eprintln!("Failed to read bias coordinate.");
+                    process::exit(1);
+                }
+            }
+        }
+        for _ in 0..cfg.dimens {
+            match split.next()?.parse() {
+                Ok(x) => bias_fc.push(x),
+                _ => {
+                    eprintln!("Failed to read bias force constant.");
+                    process::exit(1);
+                }
+            }
 
-        
+        }
     }
     
     if histograms.len() > 0 {
-        let bin_width = (cfg.hist_max - cfg.hist_min)/(cfg.num_bins as f64);
-        Some(Dataset::new(cfg.num_bins, bin_width, cfg.hist_min, cfg.hist_max, bias_x0, bias_fc, kT, histograms, cfg.cyclic)) 
+        Some(Dataset::new(num_bins, dimens_length, bin_width, cfg.hist_min.clone(), cfg.hist_max.clone(), bias_pos, bias_fc, kT, histograms, cfg.cyclic))
     } else {
         None
     }
+}
+
+// transforms a multidimensional index into a one dimensional index
+// indeces: multidimensional indeces
+// lengths: length of the matrix in each dimension
+// returns an index if the matrix is flattened to a one dimensional vector
+// example for 3 dimensions N,M,O: idx = i_O + l_O*l_M*i_M + l_O*l_M*l_N*i_N
+fn flat_index(indeces: &Vec<usize>, lengths: &Vec<usize>) -> usize {
+    let mut idx = 0;
+    for i in 0..indeces.len() {
+        idx += indeces[i]*lengths[0..i].iter()
+            .fold(1, |state, &l| { state * l });
+    }
+    idx
+}
+
+// returns true if the values are inside the histogram boundaries defined by cfg
+fn is_in_hist_boundaries(values: &Vec<f64>, cfg: &Config) -> bool {
+    for dimen in 0..cfg.dimens {
+        if values[dimen] < cfg.hist_min[dimen] || values[dimen] > cfg.hist_max[dimen] {
+            return false
+        }
+    }
+    true
 }
 
 // parse a timeseries file into a histogram
@@ -86,63 +130,61 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
         process::exit(1)
     });
     let buf = BufReader::new(&f);
-    
-    let mut global_hist = vec![0.0; cfg.num_bins];
-    let bin_width = (cfg.hist_max - cfg.hist_min)/(cfg.num_bins as f64);
+
+    // total number of bins is the product of all dimensions length
+    let total_bins = cfg.num_bins.iter().fold(1, |s, &x| { s*x });
+    let mut hist = vec![0.0; total_bins];
+
+    // bin width for each dimension: (max-min)/bins
+    let bin_width: Vec<f64> = (0..cfg.dimens).map(|idx| {
+            (cfg.hist_max[idx] - cfg.hist_min[idx])/(cfg.num_bins[idx] as f64)
+        }).collect();
+
+    // read and parse each timeseries line
     for l in buf.lines() {
     	let line = l.unwrap();
+
         // skip comments and empty lines
         if line.starts_with("#") || line.starts_with("@") || line.len() == 0 {
     		continue;
     	}
 
-    	let (_, x) = scan_fmt!(&line, "{} {}", f64, f64);
+    	let mut split = line.split_whitespace();
+        split.next(); // skip time/step column
 
-    	match x {
-    		Some(x) => {
-    			if x > cfg.hist_min && x < cfg.hist_max {
-    				let bin_ndx = ((x-cfg.hist_min) / bin_width) as usize;
-                    global_hist[bin_ndx] += 1.0;
-    			} 
-    		}
-    		None => { 
-                eprintln!("{}, Failed to read datapoint from line: {}", &window_file, &line);
-                process::exit(1);
-            }
-    	}
-    }
 
-    let mut max_bin: usize = 0;
-    let mut min_bin: usize =(cfg.num_bins-1) as usize;
-    for bin in 0..global_hist.len() {
-        if global_hist[bin] != 0.0 && bin > max_bin {
-            max_bin = bin;
-        }
-        if global_hist[bin] != 0.0 && bin < min_bin {
-            min_bin = bin;
+        let values: Vec<f64> = (0..cfg.dimens).collect::<Vec<usize>>().iter().map(|_| {
+            split.next().unwrap().parse::<f64>().unwrap()
+        }).collect();
+
+        if is_in_hist_boundaries(&values, cfg) {
+            let bin_indeces = (0..cfg.dimens).map(|dimen: usize| {
+                let val = values[dimen];
+                ((val-cfg.hist_min[dimen]) / bin_width[dimen]) as usize
+            }).collect();
+            let index = flat_index(&bin_indeces, &cfg.num_bins);
+            hist[index] += 1.0;
         }
     }
 
-    if (max_bin == min_bin && global_hist[max_bin] == 0.0) || max_bin < min_bin {
-        None // zero length histogram
-    } else {
-        // trim global hist to save memory
-        global_hist.truncate(max_bin+1);
-        global_hist.drain(..min_bin);
-        
-        let num_points: f64 = global_hist.iter().sum();
-        Some(Histogram::new(min_bin, max_bin, num_points as u32, global_hist))
+    let num_points: f64 = hist.iter().sum();
+    if num_points == 0.0 {
+        return None
     }
+    Some(Histogram::new(num_points as u32, hist))
 }
 
+// TODO multidimensional output
 pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f64>, prob: &Vec<f64>) -> Result<(), Box<Error>> {
-     let mut output = File::create(out_file)?;
-     writeln!(output, "#{:8}\t{:8}\t{:8}", "x", "Free Energy", "Probability");
-     for bin in 0..free.len() {
-        let x = ds.get_x_for_bin(bin);
-        writeln!(output, "{:8.6}\t{:8.6}\t{:8.6}", x, free[bin], prob[bin])?;
-     }
-     Ok(())
+    let mut output = File::create(out_file)?;
+    writeln!(output, "#{}\t{}\t{}", "x", "Free Energy", "Probability"); // TODO better format (coord1, coord2..)
+    for bin in 0..free.len() {
+        let coords = ds.get_coords_for_bin(bin);
+        let coords_str: String = coords.iter().map(|c| {format!("{:8.6}", c)})
+            .collect::<Vec<String>>().join("\t");
+        writeln!(output, "{}\t{:8.6}\t{:8.6}", coords_str, free[bin], prob[bin])?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -150,11 +192,12 @@ mod tests {
     use super::*;
 
     fn cfg() -> Config {
-        Config{
+        Config {
             metadata_file: "tests/data/metadata.dat".to_string(),
-            hist_min: 0.0,
-            hist_max: 3.0,
-            num_bins: 30,
+            hist_min: vec![0.0],
+            hist_max: vec![3.0],
+            num_bins: vec![30],
+            dimens: 1,
             verbose: false,
             tolerance: 0.0,
             max_iterations: 0,
@@ -173,9 +216,9 @@ mod tests {
         // assert_eq!(1, h.first);
         // assert_eq!(6, h.last);
         assert_eq!(11, h.num_points);
-        assert_eq!(2.0, h.get_bin_count(1).unwrap());
-        assert_eq!(2.0, h.get_bin_count(2).unwrap());
-        assert_eq!(1.0, h.get_bin_count(6).unwrap());      
+        assert_eq!(2.0, h.bins[1]);
+        assert_eq!(2.0, h.bins[2]);
+        assert_eq!(1.0, h.bins[6]);
     }
 
 
@@ -187,13 +230,13 @@ mod tests {
         let ds = ds.unwrap();
         println!("{:?}", ds);
         assert_eq!(2, ds.num_windows);
-        assert_eq!(cfg.num_bins, ds.num_bins);
+        assert_eq!(cfg.num_bins[0], ds.num_bins[0]);
         // fields are private  
-        // assert_eq!(cfg.hist_min, ds.hist_min);
-        // assert_eq!(cfg.hist_max, ds.hist_max);
-        // let expected_bin_width = (cfg.hist_max - cfg.hist_min)/cfg.num_bins as f64;
+        // assert_eq!(cfg.hist_min[0], ds.hist_min[0]);
+        // assert_eq!(cfg.hist_max[0], ds.hist_max[0]);
+        // let expected_bin_width = (cfg.hist_max[0] - cfg.hist_min[0])/cfg.num_bins[0] as f64;
         // assert_eq!(expected_bin_width, ds.bin_width);
-        // assert_eq!(vec![0.0, 1.0], ds.bias_x0);  
+        // assert_eq!(vec![0.0, 1.0], ds.bias_pos);
         // assert_eq!(vec![100.0, 200.0], ds.bias_fc);
         assert_eq!(cfg.temperature * k_B, ds.kT);
         assert_eq!(2, ds.histograms.len())

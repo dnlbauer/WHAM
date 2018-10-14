@@ -4,33 +4,16 @@ use std::cell::RefCell;
 // One histogram
 #[derive(Debug)]
 pub struct Histogram {
-	// offset of this histogram bins from the global histogram
-	first: usize,
-
-	// offset of the last element of the histogram. TODO required?
-	last: usize,
-
 	// total number of data points stored in the histogram
 	pub num_points: u32,
 
 	// histogram bins
-	bins: Vec<f64>
+	pub bins: Vec<f64>
 }
 
 impl Histogram {
-	pub fn new(first: usize, last: usize, num_points: u32, bins: Vec<f64>) -> Histogram {
-		assert_eq!(last-first+1, bins.len(), "histogram length does not match first/last.");
-		Histogram {first, last, num_points, bins}
-	}
-
-	// Returns the value of a bin if the bin is present in this
-	// histogram
-	pub fn get_bin_count(&self, bin: usize) -> Option<f64> {
-		if bin < self.first || bin > self.last {
-			None
-		} else {
-			Some(self.bins[bin-self.first])
-		}
+	pub fn new(num_points: u32, bins: Vec<f64>) -> Histogram {
+		Histogram {num_points, bins}
 	}
 }
 
@@ -40,17 +23,20 @@ pub struct Dataset {
 	// number of histogram windows (number of simulations)
 	pub num_windows: usize,
 
-	// number of global histogram bins
+	// total number of bins
 	pub num_bins: usize,
 
-	// min value of the histogram
-	hist_min: f64,
+	// number of bins in each dimension
+	pub dimens_lengths: Vec<usize>,
 
-	// max value of the histogram
-	hist_max: f64,
+	// min values of the histogram in each dimension
+	hist_min: Vec<f64>,
 
-	// width of a bin in unit of x
-	bin_width: f64,
+	// max values of the histogram in each dimension
+	hist_max: Vec<f64>,
+
+	// width of a bin in unit of its dimension
+	bin_width: Vec<f64>,
 
 	// value of kT
 	pub kT: f64,
@@ -62,7 +48,7 @@ pub struct Dataset {
 	pub cyclic: bool,
 
 	// locations of biases
-	bias_x0: Vec<f64>,
+	bias_pos: Vec<f64>,
 
 	// force constants of biases
 	bias_fc: Vec<f64>,
@@ -72,53 +58,78 @@ pub struct Dataset {
 }
 
 impl Dataset {
-	
-	pub fn new(num_bins: usize, bin_width: f64, hist_min: f64, hist_max: f64, bias_x0: Vec<f64>, bias_fc: Vec<f64>, kT: f64, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
+
+	pub fn new(num_bins: usize, dimens_lengths: Vec<usize>, bin_width: Vec<f64>, hist_min: Vec<f64>, hist_max: Vec<f64>, bias_pos: Vec<f64>, bias_fc: Vec<f64>, kT: f64, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
 		let num_windows = histograms.len();
 		let bias: RefCell<Vec<Option<f64>>> = RefCell::new(vec![None; num_bins*num_windows]);
 		Dataset{
 			num_windows,
 			num_bins,
+			dimens_lengths,
 			bin_width,
 			hist_min,
-			hist_max, 
+			hist_max,
 			kT,
 			histograms,
 			cyclic,
-			bias_x0,
+			bias_pos,
 			bias_fc,
 			bias,
 		}
 	}
 
-	
+	fn expand_index(&self, bin: usize, lengths: &Vec<usize>) -> Vec<usize> {
+    	let mut tmp = bin;
+    	let mut idx = vec![0; lengths.len()];
+    	for dimen in (1..lengths.len()).rev() {
+        	let denom = lengths.iter().take(dimen).fold(1, |s,&x| s*x);
+			idx[dimen] = tmp / denom;
+        	tmp = tmp % denom;
+    	}
+    	idx[0] = tmp;
+    	idx
+	}
+
+	// get center x value for a bin
+	pub fn get_coords_for_bin(&self, bin: usize) -> Vec<f64> {
+		self.expand_index(bin, &self.dimens_lengths).iter().enumerate().map(|(i, dimen_bin)| {
+			self.hist_min[i] + self.bin_width[i]*(*dimen_bin as f64 + 0.5)
+		}).collect()
+	}
+
 	// Harmonic bias calculation: bias = 0.5*k(dx)^2
 	// if cyclic is true, lowest and highest bins are assumed to be
 	// neighbors
 	pub fn calc_bias(&self, bin: usize, window: usize) -> f64 {
-		let ndx = bin + (self.num_bins*window);
+		let ndx = window * self.num_bins + bin;
 		let mut cache = self.bias.borrow_mut();
 		match cache[ndx] {
 			Some(val) => val,
 			None => {
-				let x = self.get_x_for_bin(bin);
-				let mut dx = (x-self.bias_x0[window]).abs();
-				if self.cyclic {
-					let hist_len = self.hist_max-self.hist_min;
-					if dx > 0.5*hist_len {
-						dx -= hist_len;
+				// TODO optimize this part!
+				let dimens = self.hist_min.len();
+
+				let bias_ndx: Vec<usize> = (0..dimens)
+					.map(|dimen| { window * dimens + dimen }).collect();
+				let coord = self.get_coords_for_bin(bin);
+				let bias_fc: Vec<f64> = bias_ndx.iter().map(|ndx| { self.bias_fc[*ndx] }).collect();
+				let bias_pos: Vec<f64> = bias_ndx.iter().map(|ndx| { self.bias_pos[*ndx] }).collect();
+
+				let mut bias_sum = 0.0;
+				for i in 0..dimens {
+					let mut dist = (coord[i] - bias_pos[i]).abs();
+					if self.cyclic {
+						let hist_len = self.hist_max[i] - self.hist_min[i];
+						if dist > 0.5 * hist_len {
+							dist -= hist_len;
+						}
 					}
+					bias_sum += 0.5 * bias_fc[i] * dist * dist
 				}
-				let bias = 0.5*self.bias_fc[window]*dx*dx;
-				cache[ndx] = Some(bias);
-				bias
+				cache[ndx] = Some(bias_sum);
+				bias_sum
 			}
 		}
-	}
-
-	// get center x value for a bin 
-	pub fn get_x_for_bin(&self, bin: usize) -> f64 {
-		self.hist_min + self.bin_width * ((bin as f64) + 0.5)
 	}
 
 }
@@ -140,8 +151,6 @@ mod tests {
 
 	fn build_hist() -> Histogram {
 		Histogram::new(
-			5, // first
-			9, // last
 			22, // num_points
 			vec![1.0, 1.0, 3.0, 5.0, 12.0] // bins
 		)
