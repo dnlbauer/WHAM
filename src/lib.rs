@@ -198,13 +198,8 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
 	}
 	
 	// Normalize P
-	// let mut P_sum = 0.0;
-	// for bin in 0..histograms.num_bins {
-	// 	P_sum += P[bin];
-	// }
-	// for bin in 0..histograms.num_bins {
-	// 	P[bin] /= P_sum;
-	// }
+	let P_sum: f64 = P.iter().sum();
+	P.iter_mut().map(|p| *p /= P_sum).count();
 
 	// final free energy calculation and state dump
 	println!("Finished. Dumping final PMF");
