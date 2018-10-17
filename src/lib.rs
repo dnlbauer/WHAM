@@ -31,23 +31,22 @@ pub struct Config {
 
 impl fmt::Display for Config {
 	 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-	 	write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?}\nverbose={}, tolerance={}, iterations={}, temperature={}, cyclic={:?}" , self.metadata_file, self.hist_min,
-	 		self.hist_max, self.num_bins, self.verbose, self.tolerance,
-	 		self.max_iterations, self.temperature, self.cyclic)
+         write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?} verbose={}, tolerance={}, iterations={}, temperature={}, cyclic={:?}", self.metadata_file, self.hist_min, self.hist_max, self.num_bins,
+                self.verbose, self.tolerance, self.max_iterations, self.temperature, self.cyclic)
     }
 }
 
 // Checks for convergence between two WHAM iterations. WHAM is considered as
-// converged if the absolute difference for the calculated bias offset is 
-// smaller then a tolerance value for every simulation window.
+// converged if the maximal difference for the calculated bias offsets is
+// smaller then a tolerance value.
 fn is_converged(old_F: &[f64], new_F: &[f64], tolerance: f64) -> bool {
 	!new_F.iter().zip(old_F.iter())
             .map(|x| { (x.0-x.1).abs() })
             .any(|diff| { diff > tolerance })
 }
 
-// estimate the probability of a bin of the histogram set based on F values
-// This evaluates the first WHAM equation for each bin
+// estimate the probability of a bin of the histogram set based on given bias offsets (F)
+// This evaluates the first WHAM equation for each bin.
 fn calc_bin_probability(bin: usize, ds: &Dataset, F: &[f64]) -> f64 {
     let mut denom_sum: f64 = 0.0;
 	let mut bin_count: f64 = 0.0;
@@ -59,8 +58,8 @@ fn calc_bin_probability(bin: usize, ds: &Dataset, F: &[f64]) -> f64 {
     bin_count / denom_sum
 }
 
-// estimate the bias offset F of the histogram based on given probabilities
-// This evaluates the second WHAM equation for each window
+// estimate the bias offset F of the histogram based on given probabilities.
+// This evaluates the second WHAM equation for each window and returns exp(F/kT)
 fn calc_window_F(window: usize, ds: &Dataset, P: &[f64]) -> f64 {
     let f: f64 = (0..ds.num_bins).zip(P.iter()) // zip bins and P
 		.filter_map(|bin_and_prob: (usize, &f64)| {
@@ -78,44 +77,6 @@ fn calc_window_F(window: usize, ds: &Dataset, P: &[f64]) -> f64 {
 // new bias offsets F based on previous bias offsets F_prev. This updates
 // the values in vectors F and P
 fn perform_wham_iteration(ds: &Dataset, F_prev: &[f64], F: &mut [f64], P: &mut [f64]) {
-	// reset bias offsets
-	for window in 0..ds.num_windows {
-		F[window] = 0.0;
-	}
-
-	// for bin in 0..ds.num_bins {
-	// 	let x = get_x_for_bin(bin, ds.hist_min, ds.bin_width);
-	// 	let mut num = 0.0;
-	// 	let mut denom = 0.0;
-
-	// 	for window in 0..ds.num_windows {
-	// 		match ds.histograms[window].get_bin_count(bin) {
-	// 			Some(c) => num += c,
-	// 			_ => {}
-	// 		}
-	// 		let bias = calc_bias(
-	// 			ds.bias_fc[window],
-	// 			ds.bias_pos[window],
-	// 			x);
-	// 		let bf = ((F_prev[window]-bias) / ds.kT).exp();
-	// 		denom += ds.histograms[window].num_points as f64* bf
-	// 	}
-	// 	P[bin] = num / denom;
-	
-	// 	for window in 0..ds.num_windows {
-	// 		let bias = calc_bias(
-	// 				ds.bias_fc[window],
-	// 				ds.bias_pos[window],
-	// 				x);
-	// 		let bf = (-bias/ds.kT).exp() * P[bin];
-	// 		F[window] += bf;
-	// 	}
-	// }
-
-	// for window in 0..ds.num_windows {
-	// 	F[window] = -ds.kT * F[window].ln();
-	// }
-
 	// evaluate first WHAM equation for each bin to
 	// estimage probabilities based on previous offsets (F_prev)
 	for bin in 0..ds.num_bins {
@@ -127,8 +88,77 @@ fn perform_wham_iteration(ds: &Dataset, F_prev: &[f64], F: &mut [f64], P: &mut [
 	for window in 0..ds.num_windows {
 		F[window] = calc_window_F(window, ds, P);
 	}
-
 }
+
+pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
+    println!("Supplied WHAM options: {}", &cfg);
+
+    println!("Reading input files.");
+    // TODO Better error handling with nice error messages instead of a panic!
+    let histograms = io::read_data(&cfg)
+        .expect("No datapoints in histogram boundaries.");
+    println!("{}",&histograms);
+
+    // allocate required vectors.
+    let mut P: Vec<f64> = vec![f64::NAN; histograms.num_bins]; // bin probability
+    let mut F: Vec<f64> = vec![1.0; histograms.num_windows]; // bias offset exp(F/kT)
+    let mut F_prev: Vec<f64> = vec![f64::NAN; histograms.num_windows]; // previous bias offset
+    let mut F_tmp: Vec<f64> = vec![f64::NAN; histograms.num_windows]; // temp storage for F
+
+    let mut iteration = 0;
+    let mut converged = false;
+
+    // perform WHAM until convergence
+    while !converged && iteration < cfg.max_iterations {
+        iteration += 1;
+
+        // store F values before the next iteration
+        F_prev.copy_from_slice(&F);
+
+        // perform wham iteration (this updates F and P)
+        perform_wham_iteration(&histograms, &F_prev, &mut F, &mut P);
+
+        // convergence check
+        if iteration % 10 == 0 {
+            // This backups exp(F/kT) in a temporary vector and calculates true F and F_prev for
+            // convergence. Finally, F is restored. F_prev does not need to be restored because
+            // its overwritten for the next iteration.
+            F_tmp.copy_from_slice(&F);
+            for window in 0..histograms.num_windows {
+                F[window] = -histograms.kT * F[window].ln();
+                F_prev[window] = -histograms.kT * F_prev[window].ln();
+            }
+            converged = is_converged(&F_prev, &F, cfg.tolerance);
+
+            println!("Iteration {}: dF={}", &iteration, &diff_avg(&F_prev, &F));
+            F.copy_from_slice(&F_tmp);
+        }
+
+        // Dump free energy and bias offsets
+        //if iteration % 100 == 0 {
+        //   free_energy(&histograms, &mut P, &mut A);
+        //    dump_state(&histograms, &F, &F_prev, &P, &A);
+        //}
+    }
+
+    // Normalize P to sum(P) = 1.0
+    let P_sum: f64 = P.iter().sum();
+    P.iter_mut().map(|p| *p /= P_sum).count();
+
+    // calculate free energy and dump state
+    println!("Finished. Dumping final PMF");
+    let free_energy = calc_free_energy(&histograms, &P);
+    dump_state(&histograms, &F, &F_prev, &P, &free_energy);
+
+    if iteration == cfg.max_iterations {
+        println!("!!!!! WHAM not converged! (max iterations reached) !!!!!");
+    }
+
+    io::write_results(&cfg.output, &histograms, &free_energy, &P)?;
+
+    Ok(())
+}
+
 
 // get average difference between two bias offset sets
 fn diff_avg(F: &[f64], F_prev: &[f64]) -> f64 {
@@ -137,97 +167,36 @@ fn diff_avg(F: &[f64], F_prev: &[f64]) -> f64 {
 		F_sum += (F[i]-F_prev[i]).abs()
 	}
 	F_sum / F.len() as f64
-} 
-
-
-// calculate the normalized free energy from normalized probability values
-fn free_energy(ds: &Dataset, P: &[f64], A: &mut [f64]) {
-	let mut bin_min = f64::MAX;
-
-	// Free energy calculation
-	for bin in 0..ds.num_bins {
-		A[bin] = -ds.kT*P[bin].ln();
-		if A[bin] < bin_min {
-			bin_min = A[bin];
-		}
-	}
-
-	// Make A relative to minimum
-	for bin in 0..ds.num_bins {
-		A[bin] -= bin_min;
-	}
 }
 
-pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
-	println!("Supplied WHAM options: {}", &cfg);
+// calculate the normalized free energy from probability values
+fn calc_free_energy(ds: &Dataset, P: &[f64]) -> Vec<f64> {
+    let mut minimum = f64::MAX;
+	let mut free_energy: Vec<f64> = P.iter()
+        .map(|p| {
+            -ds.kT * p.ln()
+        })
+        .inspect(|free_e| {
+            if free_e < &minimum {
+                minimum = *free_e;
+            }
+        })
+        .collect();
 
-	// read input data into the histograms object
-	println!("Reading input files.");
-
-	let histograms = io::read_data(&cfg) // TODO nicer error handling for this
-		.expect("No datapoints in histogram boundaries.");
-	println!("{}",&histograms);
-
-	// allocate only once for better performance
-	let mut F_prev: Vec<f64> = vec![f64::NAN; histograms.num_windows];
-	let mut F: Vec<f64> = vec![1.0; histograms.num_windows];
-    let mut F_tmp: Vec<f64> = vec![f64::NAN; histograms.num_windows];
-	let mut P: Vec<f64> = vec![f64::NAN; histograms.num_bins];
-	let mut A: Vec<f64> = vec![f64::NAN; histograms.num_bins];
-
-	// perform WHAM until convergence
-	let mut iteration = 0;
-    let mut converged = false;
-	while !converged && iteration < cfg.max_iterations {
-		iteration += 1;
-		// store F values before the next iteration
-		F_prev.copy_from_slice(&F);
-
-		// perform wham iteration and update F
-		perform_wham_iteration(&histograms, &F_prev, &mut F, &mut P);
-
-		// output some stats during calculation
-		if iteration % 10 == 0 {
-            F_tmp.copy_from_slice(&F);
-            F.iter_mut().map(|f| *f=-histograms.kT*f.ln()).count();
-            F_prev.iter_mut().map(|f| *f=-histograms.kT*f.ln()).count();
-            converged = is_converged(&F_prev, &F, cfg.tolerance);
-            println!("Iteration {}: dF={}", &iteration, &diff_avg(&F_prev, &F));
-			F.copy_from_slice(&F_tmp);
-		}
-
-		// Dump free energy and bias offsets
-		if iteration % 100 == 0 {
-			free_energy(&histograms, &mut P, &mut A);
-			dump_state(&histograms, &F, &F_prev, &P, &A);
-		}
-	}
-	
-	// Normalize P
-	let P_sum: f64 = P.iter().sum();
-	P.iter_mut().map(|p| *p /= P_sum).count();
-
-	// final free energy calculation and state dump
-	println!("Finished. Dumping final PMF");
-	free_energy(&histograms, &mut P, &mut A);
-	dump_state(&histograms, &F, &F_prev, &P, &A);
-
-	if iteration == cfg.max_iterations {
-		println!("!!!!! WHAM not converged! (max iterations reached) !!!!!");
-	}
-
-	io::write_results(&cfg.output, &histograms, &A, &P)?;
-	
-	Ok(())
+    for e in free_energy.iter_mut() {
+        *e -= minimum
+    }
+    free_energy
 }
 
+// TODO print nice headers for N dimensions
 fn dump_state(ds: &Dataset, F: &[f64], F_prev: &[f64], P: &[f64], A: &[f64]) {
 	let out = std::io::stdout();
     let mut lock = out.lock();
 	writeln!(lock, "# PMF");
 	writeln!(lock, "#x\t\tFree Energy\t\tP(x)");
 	for bin in 0..ds.num_bins {
-		let x = ds.get_coords_for_bin(bin)[0]; // TODO
+		let x = ds.get_coords_for_bin(bin)[0];
 		writeln!(lock, "{:9.5}\t{:9.5}\t{:9.5}", x, A[bin], P[bin]);
 	}
 	writeln!(lock, "# Bias offsets");
