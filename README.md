@@ -1,7 +1,26 @@
+Weighted Histogram Analysis Methid (WHAM)
+===
+This is an fast implementation of the weighted histogram analysis method
+written in Rust. It allows the calculation of multidimensional free energy profiles
+from umbrella sampling simulations.
+
+Features
+---
+- Fast, especially for small systems
+- Multidimensional
+- Unit tested
+
+
 TODO
-====
-- Multithreading
-- Error analysis
-- Better error handling (file read/write)
-- Better File I/O performance (file read in slow)
-- integration tests
+---
+- Multithreading (?)
+- Error analysis / bootstrapping
+- Better error messages during file I/O
+
+License 
+---
+WHAM is licensed under the GPLv3 license. Please read the LICENSE file in this
+repository for more information.
+
+Parts of this work, especially some perfomance optimizations and the I/O format, are inspired by the
+implementation of A. Grossfield (*Grossfield, Alan, "WHAM: the weighted histogram analysis method", http://membrane.urmc.rochester.edu/content/wham*).
