@@ -63,14 +63,10 @@ fn calc_bin_probability(bin: usize, ds: &Dataset, F: &[f64]) -> f64 {
 // This evaluates the second WHAM equation for each window and returns exp(F/kT)
 fn calc_window_F(window: usize, ds: &Dataset, P: &[f64]) -> f64 {
     let f: f64 = (0..ds.num_bins).zip(P.iter()) // zip bins and P
-		.filter_map(|bin_and_prob: (usize, &f64)| {
-            if bin_and_prob.1 == &0.0 { // skip zeros for speed
-                None
-            } else {
-                let bias = ds.calc_bias(bin_and_prob.0, window);
-                Some(bin_and_prob.1 * bias)
-            }
-		}).sum();
+        .map(|bin_and_prob: (usize, &f64)| {
+            let bias = ds.calc_bias(bin_and_prob.0, window);
+            bin_and_prob.1 * bias
+        }).sum();
     1.0/f
 }
 
