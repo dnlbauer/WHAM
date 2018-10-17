@@ -1,4 +1,4 @@
-Weighted Histogram Analysis Methid (WHAM)
+Weighted Histogram Analysis Method (WHAM)
 ===
 This is an fast implementation of the weighted histogram analysis method
 written in Rust. It allows the calculation of multidimensional free energy profiles
