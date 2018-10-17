@@ -64,15 +64,14 @@ fn calc_bin_probability(bin: usize, ds: &Dataset, F: &[f64]) -> f64 {
 // estimate the bias offset F of the histogram based on given probabilities
 // This evaluates the second WHAM equation for each window
 fn calc_window_F(window: usize, ds: &Dataset, P: &[f64]) -> f64 {
-    let bf_sum: f64 = (0..ds.num_bins).zip(P.iter()) // zip bins and P
-		.filter_map(|count_and_prob: (usize, &f64)| {
-            if count_and_prob.1 == &0.0 { // skip zeros for speed
+    (0..ds.num_bins).zip(P.iter()) // zip bins and P
+		.filter_map(|bin_and_prob: (usize, &f64)| {
+            if bin_and_prob.1 == &0.0 { // skip zeros for speed
                 None
             } else {
-                Some(count_and_prob.1 * (-(-ds.kT*ds.calc_bias(count_and_prob.0, window).ln()) / ds.kT).exp())
+                Some(bin_and_prob.1 * ds.calc_bias(bin_and_prob.0, window))
             }
-		}).sum();
-	-ds.kT * bf_sum.ln()
+		}).sum()
 }
 
 // One full WHAM iteration includes calculation of new probabilities P and
@@ -231,10 +230,17 @@ fn dump_state(ds: &Dataset, F: &[f64], F_prev: &[f64], P: &[f64], A: &[f64]) {
 	}
 }
 
+
 #[cfg(test)]
 mod tests {
 	use super::histogram::{Dataset,Histogram};
 	use std::f64;
+
+    macro_rules! assert_delta {
+        ($x:expr, $y:expr, $d:expr) => {
+            assert!(($x-$y).abs() < $d, "{} != {}", $x, $y)
+        }
+    }
 
 	#[test]
 	fn is_converged() {
@@ -262,15 +268,14 @@ mod tests {
 	}
 
 	#[test]
-    #[ignore]
 	fn calc_bias_offset() {
 		let ds = create_test_ds();
 		let probability = vec!(0.959, 0.331, 0.656, 46.750);
-		let expected = vec!(0.596, -0.250);
+        let expected = vec!(0.786289183, 1.10629119);
 		for window in 0..ds.num_windows {
 			let F = super::calc_window_F(window, &ds, &probability);
-			assert_near(expected[window], F, 0.001);
-		}
+            assert_delta!(expected[window], F, 0.0000001);
+        }
 	}
 
 	#[test]
