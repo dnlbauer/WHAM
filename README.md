@@ -10,6 +10,13 @@ Features
 - Multidimensional
 - Unit tested
 
+Examples
+---
+The example folder contains input and output files for two simple test systems:
+
+- 1d: Phi torsion angle of dialanine in vaccum
+- 2d: Phi and psi torsion angles of the same system
+
 
 TODO
 ---
