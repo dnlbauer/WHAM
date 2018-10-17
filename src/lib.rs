@@ -50,6 +50,7 @@ fn is_converged(old_F: &[f64], new_F: &[f64], tolerance: f64) -> bool {
 fn calc_bin_probability(bin: usize, ds: &Dataset, F: &[f64]) -> f64 {
     let mut denom_sum: f64 = 0.0;
 	let mut bin_count: f64 = 0.0;
+    // TODO calculate bin_count before wham iterations for performance
 	for (window, h) in ds.histograms.iter().enumerate() {
 		bin_count += h.bins[bin];
 		let bias = ds.calc_bias(bin, window);
@@ -124,10 +125,8 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
             // convergence. Finally, F is restored. F_prev does not need to be restored because
             // its overwritten for the next iteration.
             F_tmp.copy_from_slice(&F);
-            for window in 0..histograms.num_windows {
-                F[window] = -histograms.kT * F[window].ln();
-                F_prev[window] = -histograms.kT * F_prev[window].ln();
-            }
+            for f in F.iter_mut() { *f = -histograms.kT * f.ln() }
+            for f in F_prev.iter_mut() { *f = -histograms.kT * f.ln() }
             converged = is_converged(&F_prev, &F, cfg.tolerance);
 
             println!("Iteration {}: dF={}", &iteration, &diff_avg(&F_prev, &F));
