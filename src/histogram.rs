@@ -126,6 +126,7 @@ impl Dataset {
 					}
 					bias_sum += 0.5 * bias_fc[i] * dist * dist
 				}
+				let bias_sum = (-bias_sum/self.kT).exp();
 				cache[ndx] = Some(bias_sum);
 				bias_sum
 			}
@@ -149,6 +150,12 @@ mod tests {
 	use super::*;
 	use super::super::k_B;
 
+	macro_rules! assert_delta {
+        ($x:expr, $y:expr, $d:expr) => {
+            assert!(($x-$y).abs() < $d, "{} != {}", $x, $y)
+        }
+    }
+
 	fn build_hist() -> Histogram {
 		Histogram::new(
 			22, // num_points
@@ -158,7 +165,7 @@ mod tests {
 
 	fn build_hist_set() -> Dataset {
 		let h = build_hist();
-		Dataset::new( 
+		Dataset::new(
 			9, // num bins
 			vec![1],
 			vec![1.0], // bin width
@@ -186,38 +193,40 @@ mod tests {
 		}
 	}
 
+
+
 	#[test]
 	fn calc_bias() {
-		let ds = build_hist_set();
+		let ds = build_hist_set(); // k = 10
 
 		// 7th element -> x=7.5, x0=7.5
-		assert_eq!(0.0, ds.calc_bias(7, 0));
+		assert_delta!(1.0, ds.calc_bias(7, 0), 0.00000001);
 
 		// 8th element -> x=8.5, x0=7.5
-		assert_eq!(5.0, ds.calc_bias(8, 0));
+		assert_delta!(0.13472233779, ds.calc_bias(8,0), 0.00000001);
 		
 		// 1st element -> x=0.5, x0=7.5. non-cyclic!
-		assert_eq!(245.0, ds.calc_bias(0, 0));
+		assert_delta!(0.0, ds.calc_bias(0,0), 0.0000001);
 	}
 
 	#[test]
-	fn calc_bias_offset_cyclic() {
+	fn calc_biascyclic() {
 		let mut ds = build_hist_set();
 		ds.cyclic = true;
 
 		// 7th element -> x=7.5, x0=7.5
-		assert_eq!(0.0, ds.calc_bias(7, 0));
+		assert_delta!(1.0, ds.calc_bias(7, 0), 0.00000001);
 
 		// 8th element -> x=8.5, x0=7.5
-		assert_eq!(5.0, ds.calc_bias(8, 0));
+		assert_delta!(0.13472233779, ds.calc_bias(8, 0), 0.00000001);
 		
 
 		// 1th element -> x=0.5, x0=7.5
 		// cyclic flag makes bin 0 neighboring bin 9, so the distance is actually 2
-		assert_eq!(20.0, ds.calc_bias(0, 0));
+		assert_delta!(0.00032942643, ds.calc_bias(0, 0), 0.00000001);
 
 		// 2nd element -> x=1.5, x0=7.5
-		assert_eq!(45.0, ds.calc_bias(1, 0));
+		assert_delta!(0.00000001, ds.calc_bias(1, 0), 0.00000001);
 	}
 
 	#[test]

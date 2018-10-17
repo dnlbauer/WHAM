@@ -236,13 +236,6 @@ mod tests {
         println!("{:?}", ds);
         assert_eq!(2, ds.num_windows);
         assert_eq!(cfg.num_bins[0], ds.dimens_lengths[0]);
-        // fields are private  
-        // assert_eq!(cfg.hist_min[0], ds.hist_min[0]);
-        // assert_eq!(cfg.hist_max[0], ds.hist_max[0]);
-        // let expected_bin_width = (cfg.hist_max[0] - cfg.hist_min[0])/cfg.num_bins[0] as f64;
-        // assert_eq!(expected_bin_width, ds.bin_width);
-        // assert_eq!(vec![0.0, 1.0], ds.bias_pos);
-        // assert_eq!(vec![100.0, 200.0], ds.bias_fc);
         assert_eq!(cfg.temperature * k_B, ds.kT);
         assert_eq!(2, ds.histograms.len())
     }
