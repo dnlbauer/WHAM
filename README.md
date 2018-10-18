@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/danijoo/WHAM.svg?branch=master)](https://travis-ci.com/danijoo/WHAM)
+
 Weighted Histogram Analysis Method (WHAM)
 ===
 This is an fast implementation of the weighted histogram analysis method
