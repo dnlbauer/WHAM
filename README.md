@@ -25,6 +25,8 @@ TODO
 - Multithreading (?)
 - Error analysis / bootstrapping
 - Better error messages during file I/O
+- Autocorrelation
+- Replica exchange
 
 License 
 ---
