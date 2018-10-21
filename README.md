@@ -22,6 +22,7 @@ The example folder contains input and output files for two simple test systems:
 
 TODO
 ---
+- calculate bin count only once
 - Multithreading (?)
 - Error analysis / bootstrapping
 - Better error messages during file I/O
