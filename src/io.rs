@@ -196,10 +196,10 @@ mod tests {
 
     fn cfg() -> Config {
         Config {
-            metadata_file: "tests/data/metadata.dat".to_string(),
-            hist_min: vec![0.0],
-            hist_max: vec![3.0],
-            num_bins: vec![30],
+            metadata_file: "example/1d/metadata.dat".to_string(),
+            hist_min: vec![-3.14],
+            hist_max: vec![3.14],
+            num_bins: vec![10],
             dimens: 1,
             verbose: false,
             tolerance: 0.0,
@@ -211,33 +211,33 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // TODO
     fn read_window_file() {
-        let f = "tests/data/window_0.0.dat";
+        let f = "example/1d/COLVAR+0.0.xvg";
         let cfg = cfg();
         let h = super::read_window_file(&f, &cfg).unwrap();
         println!("{:?}", h);
-        // assert_eq!(1, h.first);
-        // assert_eq!(6, h.last);
-        assert_eq!(11, h.num_points);
-        assert_eq!(2.0, h.bins[1]);
-        assert_eq!(2.0, h.bins[2]);
-        assert_eq!(1.0, h.bins[6]);
+        assert_eq!(5000, h.num_points);
+        assert_eq!(0.0, h.bins[2]);
+        assert_eq!(11.0, h.bins[3]);
+        assert_eq!(2236.0, h.bins[4]);
+        assert_eq!(2714.0, h.bins[5]);
+        assert_eq!(39.0, h.bins[6]);
+        assert_eq!(0.0, h.bins[7]);
     }
 
 
     #[test]
-    #[ignore] // TODO
     fn read_data() {
         let cfg = cfg();
         let ds = super::read_data(&cfg);
         assert!(ds.is_some());
         let ds = ds.unwrap();
         println!("{:?}", ds);
-        assert_eq!(2, ds.num_windows);
+        assert_eq!(25, ds.num_windows);
+        assert_eq!(cfg.num_bins.len(), ds.dimens_lengths.len());
         assert_eq!(cfg.num_bins[0], ds.dimens_lengths[0]);
         assert_eq!(cfg.temperature * k_B, ds.kT);
-        assert_eq!(2, ds.histograms.len())
+        assert_eq!(25, ds.histograms.len())
     }
 
     #[test]
