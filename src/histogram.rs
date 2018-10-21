@@ -178,7 +178,7 @@ mod tests {
 			false // cyclic
 		)
 	}
-	
+
 	#[test]
 	fn calc_bias() {
 		let ds = build_hist_set(); // k = 10
