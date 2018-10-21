@@ -178,23 +178,7 @@ mod tests {
 			false // cyclic
 		)
 	}
-
-	#[test]
-	#[ignore] // TODO
-	fn get_bin_count() {
-		let h = build_hist();
-		let expected = vec![None, Some(1.0), Some(1.0), Some(3.0), Some(5.0), Some(12.0), None];
-		let test_offset = 4;
-		for i in 4..10 {
-			match expected[i-test_offset] {
-				Some(x) => assert_eq!(x, h.bins[i]),
-				None => assert_eq!(0.0, h.bins[i])
-			}
-		}
-	}
-
-
-
+	
 	#[test]
 	fn calc_bias() {
 		let ds = build_hist_set(); // k = 10
