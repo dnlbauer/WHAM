@@ -176,16 +176,18 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
     Some(Histogram::new(num_points as u32, hist))
 }
 
-// TODO multidimensional output
 pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f64>, prob: &Vec<f64>) -> Result<(), Box<Error>> {
     let output = File::create(out_file)?;
     let mut buf = BufWriter::new(output);
-    writeln!(buf, "#{}\t{}\t{}", "x", "Free Energy", "Probability"); // TODO better format (coord1, coord2..)
+
+
+    let header: String = (0..ds.dimens_lengths.len()).map(|d| {format!("coord{}", d+1)}).collect::<Vec<String>>().join("    ");
+    writeln!(buf, "#{}    {}    {}", header, "Free Energy", "Probability");
     for bin in 0..free.len() {
         let coords = ds.get_coords_for_bin(bin);
-        let coords_str: String = coords.iter().map(|c| {format!("{:8.6}", c)})
+        let coords_str: String = coords.iter().map(|c| {format!("{:8.6}    ", c)})
             .collect::<Vec<String>>().join("\t");
-        writeln!(buf, "{}\t{:8.6}\t{:8.6}", coords_str, free[bin], prob[bin])?;
+        writeln!(buf, "{}{:8.6}    {:8.6}", coords_str, free[bin], prob[bin])?;
     }
     Ok(())
 }
