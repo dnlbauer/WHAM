@@ -49,14 +49,11 @@ fn is_converged(old_F: &[f64], new_F: &[f64], tolerance: f64) -> bool {
 // This evaluates the first WHAM equation for each bin.
 fn calc_bin_probability(bin: usize, ds: &Dataset, F: &[f64]) -> f64 {
     let mut denom_sum: f64 = 0.0;
-	let mut bin_count: f64 = 0.0;
-    // TODO calculate bin_count before wham iterations for performance
-	for (window, h) in ds.histograms.iter().enumerate() {
-		bin_count += h.bins[bin];
+    for (window, h) in ds.histograms.iter().enumerate() {
 		let bias = ds.calc_bias(bin, window);
         denom_sum += (h.num_points as f64) * bias * F[window];
 	}
-    bin_count / denom_sum
+    ds.bin_count[bin] / denom_sum
 }
 
 // estimate the bias offset F of the histogram based on given probabilities.
