@@ -1,5 +1,5 @@
 name: wham
-version: "0.1.0"
+version: "0.9.0"
 author: D. Bauer <bauer@bio.tu-darmstadt.de>
 about: |
   wham is a fast implementation of the weighted histogram analysis method (WHAM) written in Rust. It currently supports potential of mean force (PMF) calculations in multiple dimensions at constant temperature.
