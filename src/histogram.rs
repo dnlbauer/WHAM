@@ -106,18 +106,20 @@ impl Dataset {
 
 	// Harmonic bias calculation: bias = 0.5*k(dx)^2
 	// if cyclic is true, lowest and highest bins are assumed to be
-	// neighbors
+	// neighbors. This returns exp(U/kT) instead of U for better performance.
 	pub fn calc_bias(&self, bin: usize, window: usize) -> f64 {
 		let ndx = window * self.num_bins + bin;
 		let mut cache = self.bias.borrow_mut();
 		match cache[ndx] {
 			Some(val) => val,
 			None => {
-				// TODO optimize this part!
-				let dimens = self.hist_min.len();
+				let dimens = self.dimens_lengths.len();
 
+				// index of the bias value depends on the window und dimension
 				let bias_ndx: Vec<usize> = (0..dimens)
 					.map(|dimen| { window * dimens + dimen }).collect();
+
+				// find the N coords, force constants and bias coords
 				let coord = self.get_coords_for_bin(bin);
 				let bias_fc: Vec<f64> = bias_ndx.iter().map(|ndx| { self.bias_fc[*ndx] }).collect();
 				let bias_pos: Vec<f64> = bias_ndx.iter().map(|ndx| { self.bias_pos[*ndx] }).collect();
@@ -125,12 +127,13 @@ impl Dataset {
 				let mut bias_sum = 0.0;
 				for i in 0..dimens {
 					let mut dist = (coord[i] - bias_pos[i]).abs();
-					if self.cyclic {
+					if self.cyclic { // periodic conditions
 						let hist_len = self.hist_max[i] - self.hist_min[i];
 						if dist > 0.5 * hist_len {
 							dist -= hist_len;
 						}
 					}
+					// store exp(U/kT) for better performance
 					bias_sum += 0.5 * bias_fc[i] * dist * dist
 				}
 				let bias_sum = (-bias_sum/self.kT).exp();
