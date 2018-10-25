@@ -181,15 +181,13 @@ fn calc_free_energy(ds: &Dataset, P: &[f64]) -> Vec<f64> {
     free_energy
 }
 
-// TODO print nice headers for N dimensions
 fn dump_state(ds: &Dataset, F: &[f64], F_prev: &[f64], P: &[f64], A: &[f64]) {
 	let out = std::io::stdout();
     let mut lock = out.lock();
 	writeln!(lock, "# PMF");
-	writeln!(lock, "#x\t\tFree Energy\t\tP(x)");
+	writeln!(lock, "#bin\t\tFree Energy\t\tP(x)");
 	for bin in 0..ds.num_bins {
-		let x = ds.get_coords_for_bin(bin)[0];
-		writeln!(lock, "{:9.5}\t{:9.5}\t{:9.5}", x, A[bin], P[bin]);
+		writeln!(lock, "{:9.5}\t{:9.5}\t{:9.5}", bin, A[bin], P[bin]);
 	}
 	writeln!(lock, "# Bias offsets");
 	writeln!(lock, "#Window\t\tF\t\tdF");
