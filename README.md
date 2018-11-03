@@ -61,10 +61,8 @@ TODO
 ---
 - Multithreading (?)
 - Error analysis / bootstrapping
-- Better error messages during file I/O
 - Autocorrelation
 - Replica exchange
-- Unit tests for 2d/Nd WHAM
 
 License 
 ---

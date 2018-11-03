@@ -5,6 +5,7 @@ authors = ["D. Bauer <bauer@bio.tu-darmstadt.de>"]
 
 [dependencies]
 clap = {version="2.32.0", features=['yaml']}
+error-chain = "0.12.0"
 
 [profile.release]
 opt-level = 2

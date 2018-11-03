@@ -1,14 +1,19 @@
 #![allow(non_snake_case)]
 
+#[macro_use]
+extern crate error_chain;
+
 pub mod io;
 pub mod histogram;
 
-use std::error::Error;
-use std::result::Result;
 use histogram::Dataset;
 use std::f64;
 use std::fmt;
 use std::io::prelude::*;
+
+// init error chain
+pub mod errors { error_chain!{} }
+use errors::*;
 
 #[allow(non_upper_case_globals)]
 static k_B: f64 = 0.0083144621; // kJ/mol*K
@@ -84,13 +89,12 @@ fn perform_wham_iteration(ds: &Dataset, F_prev: &[f64], F: &mut [f64], P: &mut [
 	}
 }
 
-pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
+pub fn run(cfg: &Config) -> Result<()>{
     println!("Supplied WHAM options: {}", &cfg);
 
     println!("Reading input files.");
     // TODO Better error handling with nice error messages instead of a panic!
-    let histograms = io::read_data(&cfg)
-        .expect("No datapoints in histogram boundaries.");
+    let histograms = io::read_data(&cfg).chain_err(|| "Failed to create histogram.")?;
     println!("{}",&histograms);
 
     // allocate required vectors.
@@ -146,7 +150,8 @@ pub fn run(cfg: &Config) -> Result<(), Box<Error>>{
         println!("!!!!! WHAM not converged! (max iterations reached) !!!!!");
     }
 
-    io::write_results(&cfg.output, &histograms, &free_energy, &P)?;
+    io::write_results(&cfg.output, &histograms, &free_energy, &P)
+		.chain_err(|| "Could not write results to output file")?;
 
     Ok(())
 }

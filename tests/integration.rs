@@ -17,10 +17,55 @@ mod integration {
     }
 
     #[test]
+    fn calling_wham_with_data_out_of_bonds() {
+        let output = Command::new("./target/debug/wham")
+            .args(&["--bins", "100", "--min", "2.0", "--max", "3.0", "-T", "300"])
+            .args(&["-f", "example/1d/metadata.dat"])
+            .args(&["-o", "/dev/null"])
+            .output()
+            .expect("failed to execute process");
+        let output = String::from_utf8_lossy(&output.stderr);
+        println!("{}", output);
+        assert!(output.to_string().contains(
+            "No data points in histogram boundaries"
+        ));
+    }
+
+    #[test]
+    fn calling_wham_with_unparseable_bias_pos() {
+        let output = Command::new("./target/debug/wham")
+            .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
+            .args(&["-f", "tests/metadata_unparseable1.dat"])
+            .args(&["-o", "/dev/null"])
+            .output()
+            .expect("failed to execute process");
+        let output = String::from_utf8_lossy(&output.stderr);
+        println!("{}", output);
+        assert!(output.to_string().contains(
+            "Failed to read bias position in line 1"
+        ));
+    }
+
+    #[test]
+    fn calling_wham_with_unparseable_bias_fc() {
+        let output = Command::new("./target/debug/wham")
+            .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
+            .args(&["-f", "tests/metadata_unparseable2.dat"])
+            .args(&["-o", "/dev/null"])
+            .output()
+            .expect("failed to execute process");
+        let output = String::from_utf8_lossy(&output.stderr);
+        println!("{}", output);
+        assert!(output.to_string().contains(
+            "Failed to read bias fc in line 1"
+        ));
+    }
+
+    #[test]
     fn calling_wham_1d() {;
         Command::new("./target/debug/wham")
             .args(&["--bins", "100", "--max", "3.14", "--min", "-3.14", "-T", "300", "--cyclic"])
-            .args(&["-f", "example/1d/metadata.dat"])
+            .args(&["-f", "example/1d/metadata_unparseable1.dat"])
             .args(&["-o", "/tmp/wham_test_1d.out"])
             .output()
             .expect("failed to execute process");
@@ -40,7 +85,7 @@ mod integration {
     fn calling_wham_2d() {;
         Command::new("./target/debug/wham")
             .args(&["--bins", "100,100", "--max", "3.14,3.14", "--min", "-3.14,-3.14", "-T", "300", "--cyclic"])
-            .args(&["-f", "example/2d/metadata.dat"])
+            .args(&["-f", "example/2d/metadata_unparseable1.dat"])
             .args(&["-o", "/tmp/wham_test_2d.out"])
             .output()
             .expect("failed to execute process");

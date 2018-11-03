@@ -4,19 +4,21 @@ extern crate clap;
 
 use clap::App;
 use wham::Config;
-use std::error::Error;
-use std::result::Result;
+use wham::errors::*;
 use std::process;
 
 // Parse command line arguments into a Config struct
-fn cli() -> Result<Config, Box<Error>> {
+fn cli() -> Result<Config> {
 	let yaml = load_yaml!("cli.yml");
 	let matches = App::from_yaml(yaml).get_matches();
 	let metadata_file = matches.value_of("metadata").unwrap().to_string();
 	let verbose: bool = matches.is_present("verbose");
-	let temperature: f64 = matches.value_of("temperature").unwrap().parse()?;
-	let tolerance: f64 = matches.value_of("tolerance").unwrap_or("0.000001").parse()?;
-	let max_iterations: usize = matches.value_of("iterations").unwrap_or("100000").parse()?;
+	let temperature: f64 = matches.value_of("temperature").unwrap().parse()
+		.chain_err(|| "Cannot read temperature.")?;
+	let tolerance: f64 = matches.value_of("tolerance").unwrap_or("0.000001").parse()
+		.chain_err(|| "Cannot read tolerance.")?;
+	let max_iterations: usize = matches.value_of("iterations").unwrap_or("100000").parse()
+		.chain_err(|| "Cannot parse iterations.")?;
 	let output = matches.value_of("output").unwrap_or("wham.out").to_string();
     let cyclic: bool = matches.is_present("cyclic");
 
@@ -40,9 +42,14 @@ fn cli() -> Result<Config, Box<Error>> {
 }
 
 fn main() {
+
 	let cfg = cli().expect("Failed to parse CLI.");
-	match wham::run(&cfg) {
-		Err(_) => process::exit(1),
-		_ => {}
+	if let Err(error) = wham::run(&cfg) {
+		eprintln!("Error: {}", error);
+
+		for e in error.iter().skip(1) {
+			eprintln!("Reason: {}", e)
+		}
+		process::exit(1);
 	}
 }

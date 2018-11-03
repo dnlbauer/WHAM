@@ -5,11 +5,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader,BufWriter};
 use k_B;
-use std::process;
-use std::option::Option;
 use std::path::Path;
-use std::error::Error;
-use std::result::Result;
+use super::errors::*;
 
 // Returns the path to path2 relative to path1
 // path1: "path/to/file.dat"
@@ -28,7 +25,7 @@ pub fn vprintln(s: String, verbose: bool) {
 
 // Read input data into a histogram set by iterating over input files
 // given in the metadata file
-pub fn read_data(cfg: &Config) -> Option<Dataset> {
+pub fn read_data(cfg: &Config) -> Result<Dataset> {
 	let mut bias_pos: Vec<f64> = Vec::new();
 	let mut bias_fc: Vec<f64> = Vec::new();
     let mut histograms: Vec<Histogram> = Vec::new();
@@ -40,62 +37,51 @@ pub fn read_data(cfg: &Config) -> Option<Dataset> {
     let num_bins = cfg.num_bins.iter().fold(1, |state, &bins| state*bins);
     let dimens_length = cfg.num_bins.clone();
 
-    let f = File::open(&cfg.metadata_file).unwrap_or_else(|x| {
-        eprintln!("Failed to read metadata from {}. {}", &cfg.metadata_file, x);
-        process::exit(1)
-    });
+    let f = File::open(&cfg.metadata_file).chain_err(|| "Failed to open metadata file")?;
     let buf = BufReader::new(&f);
 
     // read each metadata file line and parse it
-    for l in buf.lines() {
-    	let line = l.unwrap();
+    for (line_num,l) in buf.lines().enumerate() {
+    	let line = l.chain_err(|| "Failed to read line")?;
 
         // skip comments and empty lines
         if line.starts_with("#") || line.len() == 0 {
     		continue;
     	}
 
-    	let mut split = line.split_whitespace();
+    	let split: Vec<&str> = line.split_whitespace().collect();
+        if split.len() < 1 + cfg.dimens * 2 {
+            bail!(format!("Wrong number of columns in line {} of metadata file. Empty Line?", line_num+1));
+        }
 
         // parse histogram data
-        let path = get_relative_path(&cfg.metadata_file, split.next()?);
-        match read_window_file(&path, cfg) {
-            Some(h) => {
-                histograms.push(h);
-                vprintln(format!("{}, {} data points added.", &path, histograms.last().unwrap().num_points), cfg.verbose);
-            },
-            None => {
-                eprintln!("No data points inside histogram boundaries: {}", &path);
-                process::exit(1)
-            }
+        let path = get_relative_path(&cfg.metadata_file, split[0]);
+        let h = read_window_file(&path, cfg)
+            .chain_err(|| format!("Failed to parse process data file {}", &path))?;
+        if h.num_points == 0 {
+            bail!(format!("No data points in histogram boundaries: {}", &path))
         }
+        histograms.push(h);
+        vprintln(format!("{}, {} data points added.", &path,
+                         histograms.last().unwrap().num_points), cfg.verbose);
 
         // parse bias force constants and positions
-        for _ in 0..cfg.dimens {
-            match split.next()?.parse() {
-                Ok(x) => bias_pos.push(x),
-                _ => {
-                    eprintln!("Failed to read bias coordinate.");
-                    process::exit(1);
-                }
-            }
+        for i in 1..cfg.dimens+1 {
+            let pos = split[i].parse()
+                .chain_err(|| format!("Failed to read bias position in line {} of metadata file", line_num+1))?;
+            bias_pos.push(pos);
         }
-        for _ in 0..cfg.dimens {
-            match split.next()?.parse() {
-                Ok(x) => bias_fc.push(x),
-                _ => {
-                    eprintln!("Failed to read bias force constant.");
-                    process::exit(1);
-                }
-            }
-
+        for i in (1+cfg.dimens)..(1+2*cfg.dimens) {
+            let fc = split[i].parse()
+                .chain_err(|| format!("Failed to read bias fc in line {} of metadata file", line_num+1))?;
+            bias_fc.push(fc);
         }
     }
     
     if histograms.len() > 0 {
-        Some(Dataset::new(num_bins, dimens_length, bin_width, cfg.hist_min.clone(), cfg.hist_max.clone(), bias_pos, bias_fc, kT, histograms, cfg.cyclic))
+        Ok(Dataset::new(num_bins, dimens_length, bin_width, cfg.hist_min.clone(), cfg.hist_max.clone(), bias_pos, bias_fc, kT, histograms, cfg.cyclic))
     } else {
-        None
+        bail!("Histogram has no datapoints.")
     }
 }
 
@@ -124,11 +110,9 @@ fn is_in_hist_boundaries(values: &Vec<f64>, cfg: &Config) -> bool {
 }
 
 // parse a timeseries file into a histogram
-fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
-	let f = File::open(window_file).unwrap_or_else(|x| {
-        eprintln!("Failed to read sample data from {}. {}", window_file, x);
-        process::exit(1)
-    });
+fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
+	let f = File::open(window_file)
+        .chain_err(|| format!("Failed to open sample data file {}", window_file))?;
     let mut buf = BufReader::new(&f);
 
     // total number of bins is the product of all dimensions length
@@ -142,7 +126,7 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
 
     // read and parse each timeseries line
     let mut line = String::new();
-    while buf.read_line(&mut line).unwrap() > 0 {
+    while buf.read_line(&mut line).chain_err(|| "Failed to read line")? > 0 {
         // skip comments and empty lines
         if line.starts_with("#") || line.starts_with("@") || line.len() == 0 {
             line.clear();
@@ -170,24 +154,24 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Option<Histogram> {
     }
 
     let num_points: f64 = hist.iter().sum();
-    if num_points == 0.0 {
-        return None
-    }
-    Some(Histogram::new(num_points as u32, hist))
+    Ok(Histogram::new(num_points as u32, hist))
 }
 
-pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f64>, prob: &Vec<f64>) -> Result<(), Box<Error>> {
-    let output = File::create(out_file)?;
+pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f64>, prob: &Vec<f64>) -> Result<()> {
+    let output = File::create(out_file)
+        .chain_err(|| format!("Failed to create file with path {}", out_file))?;
     let mut buf = BufWriter::new(output);
 
-
-    let header: String = (0..ds.dimens_lengths.len()).map(|d| {format!("coord{}", d+1)}).collect::<Vec<String>>().join("    ");
+    let header: String = (0..ds.dimens_lengths.len()).map(|d| format!("coord{}", d+1))
+        .collect::<Vec<String>>().join("    ");
     writeln!(buf, "#{}    {}    {}", header, "Free Energy", "Probability");
+
     for bin in 0..free.len() {
         let coords = ds.get_coords_for_bin(bin);
         let coords_str: String = coords.iter().map(|c| {format!("{:8.6}    ", c)})
             .collect::<Vec<String>>().join("\t");
-        writeln!(buf, "{}{:8.6}    {:8.6}", coords_str, free[bin], prob[bin])?;
+        writeln!(buf, "{}{:8.6}    {:8.6}", coords_str, free[bin], prob[bin])
+            .chain_err(|| "Failed to write to file.")?;
     }
     Ok(())
 }
@@ -231,9 +215,7 @@ mod tests {
     #[test]
     fn read_data() {
         let cfg = cfg();
-        let ds = super::read_data(&cfg);
-        assert!(ds.is_some());
-        let ds = ds.unwrap();
+        let ds = super::read_data(&cfg).unwrap();
         println!("{:?}", ds);
         assert_eq!(25, ds.num_windows);
         assert_eq!(cfg.num_bins.len(), ds.dimens_lengths.len());
