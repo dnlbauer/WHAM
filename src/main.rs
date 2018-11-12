@@ -28,6 +28,8 @@ fn cli() -> Result<Config> {
         .split(',').map(|x| { x.parse().unwrap() }).collect();
 	let num_bins: Vec<usize> = matches.value_of("bins").unwrap()
         .split(',').map(|x| { x.parse().unwrap() }).collect();
+	let bootstrap: usize = matches.value_of("bootstrap").unwrap_or("0").parse()
+		.chain_err(|| "Cannot parse bootstrap iteration.")?;
 
     if num_bins.len() != hist_max.len() || num_bins.len() != hist_max.len() {
         eprintln!("Input dimensions do not match (min: {}, max: {}, bins: {})",
@@ -38,7 +40,8 @@ fn cli() -> Result<Config> {
     let dimens = num_bins.len();
 
 	Ok(wham::Config{metadata_file, hist_min, hist_max, num_bins, dimens,
-		verbose, tolerance, max_iterations, temperature, cyclic, output})
+		verbose, tolerance, max_iterations, temperature, cyclic, output,
+		bootstrap})
 }
 
 fn main() {

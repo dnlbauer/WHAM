@@ -2,9 +2,12 @@
 
 #[macro_use]
 extern crate error_chain;
+extern crate rand;
+extern crate rgsl;
 
 pub mod io;
 pub mod histogram;
+pub mod error_analysis;
 
 use histogram::Dataset;
 use std::f64;
@@ -32,12 +35,13 @@ pub struct Config {
 	pub temperature: f64,
 	pub cyclic: bool,
 	pub output: String,
+	pub bootstrap: usize,
 }
 
 impl fmt::Display for Config {
 	 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-         write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?} verbose={}, tolerance={}, iterations={}, temperature={}, cyclic={:?}", self.metadata_file, self.hist_min, self.hist_max, self.num_bins,
-                self.verbose, self.tolerance, self.max_iterations, self.temperature, self.cyclic)
+         write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?} verbose={}, tolerance={}, iterations={}, temperature={}, cyclic={:?}, bootstrap={:?}", self.metadata_file, self.hist_min, self.hist_max, self.num_bins,
+                self.verbose, self.tolerance, self.max_iterations, self.temperature, self.cyclic, self.bootstrap)
     }
 }
 
@@ -54,11 +58,12 @@ fn is_converged(old_F: &[f64], new_F: &[f64], tolerance: f64) -> bool {
 // This evaluates the first WHAM equation for each bin.
 fn calc_bin_probability(bin: usize, dataset: &Dataset, F: &[f64]) -> f64 {
     let mut denom_sum: f64 = 0.0;
+	let bin_count: f64 = dataset.get_weighted_bin_count(bin);
     for (window, h) in dataset.histograms.iter().enumerate() {
 		let bias = dataset.calc_bias(bin, window);
-        denom_sum += (h.num_points as f64) * bias * F[window];
+        denom_sum += (dataset.weights[window] * h.num_points as f64) * bias * F[window];
 	}
-    dataset.bin_count[bin] / denom_sum
+    bin_count / denom_sum
 }
 
 // estimate the bias offset F of the histogram based on given probabilities.
@@ -150,12 +155,23 @@ pub fn run(cfg: &Config) -> Result<()>{
 
     let (P, F, F_prev) = perform_wham(&cfg, &dataset)?;
 
+	let P_std: Vec<f64>;
+	let free_energy_std: Vec<f64>;
+	if cfg.bootstrap > 0 {
+		let error_est = error_analysis::run_bootstrap(&cfg, dataset.clone(), &P, cfg.bootstrap);
+		P_std = error_est.0;
+		free_energy_std = error_est.1;
+	} else {
+		P_std = vec![0.0; P.len()];
+		free_energy_std = vec![0.0; P.len()];
+	}
+
     // calculate free energy and dump state
     println!("Finished. Dumping final PMF");
 	let free_energy = calc_free_energy(&dataset, &P);
-    dump_state(&dataset, &F, &F_prev, &P, &free_energy);
+    dump_state(&dataset, &F, &F_prev, &P, &P_std, &free_energy, &free_energy_std);
 
-    io::write_results(&cfg.output, &dataset, &free_energy, &P)
+    io::write_results(&cfg.output, &dataset, &free_energy, &free_energy_std, &P, &P_std)
 		.chain_err(|| "Could not write results to output file")?;
 
     Ok(())
@@ -191,16 +207,17 @@ fn calc_free_energy(dataset: &Dataset, P: &[f64]) -> Vec<f64> {
     free_energy
 }
 
-fn dump_state(dataset: &Dataset, F: &[f64], F_prev: &[f64], P: &[f64], A: &[f64]) {
+fn dump_state(dataset: &Dataset, F: &[f64], F_prev: &[f64], P: &[f64], P_std: &[f64], A: &[f64], A_std: &[f64]) {
+	// TODO fix output of F/F_prev
 	let out = std::io::stdout();
     let mut lock = out.lock();
 	writeln!(lock, "# PMF");
-	writeln!(lock, "#bin\t\tFree Energy\t\tP(x)");
+	writeln!(lock, "#bin\t\tFree Energy\t\t+/-\t\tP(x)\t\t+/-");
 	for bin in 0..dataset.num_bins {
-		writeln!(lock, "{:9.5}\t{:9.5}\t{:9.5}", bin, A[bin], P[bin]);
+		writeln!(lock, "{:9.5}\t{:9.5}\t{:9.5}\t{:9.5}\t{:9.5}", bin, A[bin], A_std[bin], P[bin], P_std[bin]);
 	}
 	writeln!(lock, "# Bias offsets");
-	writeln!(lock, "#Window\t\tF\t\tdF");
+	writeln!(lock, "#Window\t\tF\t\tF_prev");
 	for window in 0..dataset.num_windows {
 		writeln!(lock, "{}\t{:9.5}\t{:8.8}", window, F[window], (F[window]-F_prev[window]).abs());
 	}

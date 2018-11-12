@@ -61,6 +61,7 @@ args:
         required: false
         help: Stop WHAM after this many iterations without convergence (defaults to 100,000).
     - cyclic:
+        short: c
         long: cyclic
         help: For periodic reaction coordinates. If this is set, the first and last coordinate bin in each dimension are treated as neighbors for the bias calculation.
     - verbose:
@@ -71,12 +72,17 @@ args:
     - temperature:
         short: T
         long: temperature
-        help: WHAM temperature in Kelvin
+        help: WHAM temperature in Kelvin.
         takes_value: true
         required: true
     - output:
         short: o
         long: output
-        help: Free energy output file (defaults to wham.out)
+        help: Free energy output file (defaults to wham.out).
+        takes_value: true
+        required: false
+    - bootstrap:
+        long: bt
+        help: Number of bayesian bootstrapping runs for error analysis by assigning random weights (defaults to 0).
         takes_value: true
         required: false

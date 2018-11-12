@@ -158,20 +158,20 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
 }
 
 // Write WHAM calculation results to out_file.
-pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f64>, prob: &Vec<f64>) -> Result<()> {
+pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f64>, free_std: &Vec<f64>, prob: &Vec<f64>, prob_std: &Vec<f64>) -> Result<()> {
     let output = File::create(out_file)
         .chain_err(|| format!("Failed to create file with path {}", out_file))?;
     let mut buf = BufWriter::new(output);
 
     let header: String = (0..ds.dimens_lengths.len()).map(|d| format!("coord{}", d+1))
         .collect::<Vec<String>>().join("    ");
-    writeln!(buf, "#{}    {}    {}", header, "Free Energy", "Probability");
+    writeln!(buf, "#{}    {}    {}    {}    {}", header, "Free Energy", "+/-", "Probability", "+/-");
 
     for bin in 0..free.len() {
         let coords = ds.get_coords_for_bin(bin);
         let coords_str: String = coords.iter().map(|c| {format!("{:8.6}    ", c)})
             .collect::<Vec<String>>().join("\t");
-        writeln!(buf, "{}{:8.6}    {:8.6}", coords_str, free[bin], prob[bin])
+        writeln!(buf, "{}{:8.6}    {:8.6}    {:8.6}    {:8.6}", coords_str, free[bin], free_std[bin], prob[bin], prob_std[bin])
             .chain_err(|| "Failed to write to file.")?;
     }
     Ok(())
@@ -194,6 +194,7 @@ mod tests {
             temperature: 300.0,
             cyclic: false,
             output: "qwert".to_string(),
+            bootstrap: 0,
         }
     }
 

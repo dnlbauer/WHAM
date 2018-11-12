@@ -2,7 +2,7 @@ use std::fmt;
 use std::cell::RefCell;
 
 // One histogram
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Histogram {
 	// total number of data points stored in the histogram
 	pub num_points: u32,
@@ -18,7 +18,7 @@ impl Histogram {
 }
 
 // a set of histograms
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Dataset {
 	// number of histogram windows (number of simulations)
 	pub num_windows: usize,
@@ -56,8 +56,8 @@ pub struct Dataset {
 	// bias value cache
 	bias: RefCell<Vec<Option<f64>>>,
 
-	// sum of bin count for windows
-	pub bin_count: Vec<f64>
+	// histogram weight
+	pub weights: Vec<f64>,
 }
 
 impl Dataset {
@@ -65,9 +65,7 @@ impl Dataset {
 	pub fn new(num_bins: usize, dimens_lengths: Vec<usize>, bin_width: Vec<f64>, hist_min: Vec<f64>, hist_max: Vec<f64>, bias_pos: Vec<f64>, bias_fc: Vec<f64>, kT: f64, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
 		let num_windows = histograms.len();
 		let bias: RefCell<Vec<Option<f64>>> = RefCell::new(vec![None; num_bins*num_windows]);
-		let bin_count = (0..num_bins).map(|bin| {
-			histograms.iter().map(|h| h.bins[bin]).sum()
-		}).collect();
+		let weights = vec![1.0; num_windows];
 		Dataset{
 			num_windows,
 			num_bins,
@@ -81,8 +79,19 @@ impl Dataset {
 			bias_pos,
 			bias_fc,
 			bias,
-			bin_count,
+			weights
 		}
+	}
+
+	pub fn new_weighted(ds: Dataset, weights: Vec<f64>) -> Dataset {
+		Dataset {
+			weights: weights,
+			..ds
+		}
+	}
+
+	pub fn get_weighted_bin_count(&self, bin: usize) -> f64 {
+		self.histograms.iter().enumerate().map(|(idx,h)| self.weights[idx]*h.bins[bin]).sum()
 	}
 
 	fn expand_index(&self, bin: usize, lengths: &[usize]) -> Vec<usize> {
@@ -247,10 +256,10 @@ mod tests {
 			vec![build_hist(), build_hist()], // hists
 			false // cyclic
 		);
-		assert_delta!(2.0, ds.bin_count[0], 0.0000000001);
-		assert_delta!(2.0, ds.bin_count[1], 0.0000000001);
-		assert_delta!(6.0, ds.bin_count[2], 0.0000000001);
-		assert_delta!(10.0, ds.bin_count[3], 0.0000000001);
-		assert_delta!(24.0, ds.bin_count[4], 0.0000000001);
+		assert_delta!(2.0, ds.get_weighted_bin_count(0), 0.0000000001);
+		assert_delta!(2.0, ds.get_weighted_bin_count(1), 0.0000000001);
+		assert_delta!(6.0, ds.get_weighted_bin_count(2), 0.0000000001);
+		assert_delta!(10.0, ds.get_weighted_bin_count(3), 0.0000000001);
+		assert_delta!(24.0, ds.get_weighted_bin_count(4), 0.0000000001);
 	}
 }
