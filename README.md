@@ -4,8 +4,8 @@ Weighted Histogram Analysis Method (WHAM)
 ===
 This is an fast implementation of the weighted histogram analysis method
 written in Rust. It allows the calculation of multidimensional free energy profiles
-from umbrella sampling simulations. For more details on the method, I suggest Roux, B.
-(1995). The calculation of the potential of mena force using computer simulations, CPC, 91(1), 275-282.
+from umbrella sampling simulations. For more details on the method, I suggest *Roux, B.
+(1995). The calculation of the potential of mean force using computer simulations, CPC, 91(1), 275-282.*
 
 Features
 ---
@@ -74,8 +74,8 @@ Error analysis
 WHAM can perform error analysis using the bayesian bootstrapping method. Every simulation window is assumed to be an
 individual set of data point. By calculating probabilities N times with randomly assigned weights for each window,
 one can estimate the error as standard deviation between the N bootstrapping runs. For more details see
-van der Spoel, D. et al. (2010). g_wham—A Free Weighted Histogram Analysis Implementation Including Robust Error and
-Autocorrelation Estimates, JCTC, 6(12), 3713-3720.
+*Van der Spoel, D. et al. (2010). g_wham—A Free Weighted Histogram Analysis Implementation Including Robust Error and
+Autocorrelation Estimates, JCTC, 6(12), 3713-3720*.
 
 To perform bayesian bootstrapping in WHAM, use the ```-bt <RUNS>``` flag to perform <RUNS> individual bootstrapping
 runs. The error estimates of bin probabilities and free energy will be given as separate column (+/-) in the output file.
