@@ -81,7 +81,7 @@ TODO
 
 License 
 ---
-WHAM is licensed under the GPLv3 license. Please read the LICENSE file in this
+WHAM is licensed under the GPL-3.0 license. Please read the LICENSE file in this
 repository for more information.
 
 Parts of this work, especially some perfomance optimizations and the I/O format, are inspired by the

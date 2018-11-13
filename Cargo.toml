@@ -2,6 +2,9 @@
 name = "wham"
 version = "0.9.0"
 authors = ["D. Bauer <bauer@bio.tu-darmstadt.de>"]
+description = "An implementation of the weighted histogram analysis method"
+license = "GPL-3.0"
+repository = "https://github.com/danijoo/WHAM"
 
 [dependencies]
 clap = {version="2.32.0", features=['yaml']}
