@@ -14,6 +14,22 @@ Features
 - Error analysis
 - Unit tested
 
+Installation
+---
+WHAM requires the GSL library to be installed: 
+```bash
+# on debian/ubuntu:
+sudo apt-get install libgsl0-dev
+```
+
+Installation from source via cargo:
+```bash
+# cargo installation
+curl -sSf https://static.rust-lang.org/rustup.sh | sh
+
+cargo install wham
+```
+
 Usage
 ---
 wham has a convenient command line interface. You can see all options with
