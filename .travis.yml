@@ -4,7 +4,12 @@ rust:
   - stable
   - beta
   - nightly
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y libgsl* gsl-*
+sudo: true
+env:
+  global:
+    - LD_LIBRARY_PATH=/usr/local/lib
+addons:
+  apt:
+    packages:
+      - libgsl0-dev
  
