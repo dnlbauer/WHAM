@@ -52,7 +52,7 @@ pub fn run_bootstrap(cfg: &Config, ds: Dataset, P: &[f64], num_runs: usize) -> (
     (P_std, A_std)
 }
 
-#[test]
+#[cfg(tests)]
 mod tests {
     use super::*;
     use super::super::k_B;
