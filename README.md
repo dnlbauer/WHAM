@@ -101,4 +101,4 @@ WHAM is licensed under the GPL-3.0 license. Please read the LICENSE file in this
 repository for more information.
 
 Parts of this work, especially some perfomance optimizations and the I/O format, are inspired by the
-implementation of A. Grossfield (*A. Grossfield, "WHAM: the weighted histogram analysis method", http://membrane.urmc.rochester.edu/content/wham*).
+implementation of A. Grossfield (*Grossfield, A, WHAM: the weighted histogram analysis method, http://membrane.urmc.rochester.edu/content/wham*).
