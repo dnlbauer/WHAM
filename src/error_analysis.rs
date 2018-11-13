@@ -1,6 +1,5 @@
 use rand;
-use super::histogram::{Dataset,Histogram};
-use super::k_B;
+use super::histogram::{Dataset};
 use super::perform_wham;
 use super::Config;
 use rgsl::statistics;
@@ -43,8 +42,11 @@ pub fn run_bootstrap(cfg: &Config, ds: Dataset, P: &[f64], num_runs: usize) -> (
     (P_std, A_std)
 }
 
+#[test]
 mod tests {
     use super::*;
+    use super::super::k_B;
+    use super::super::histogram::Histogram;
 
     fn build_hist() -> Histogram {
 		Histogram::new(
