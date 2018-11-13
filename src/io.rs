@@ -157,6 +157,7 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
     Ok(Histogram::new(num_points as u32, hist))
 }
 
+// Write WHAM calculation results to out_file.
 pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f64>, prob: &Vec<f64>) -> Result<()> {
     let output = File::create(out_file)
         .chain_err(|| format!("Failed to create file with path {}", out_file))?;

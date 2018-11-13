@@ -145,7 +145,6 @@ pub fn run(cfg: &Config) -> Result<()>{
     println!("Supplied WHAM options: {}", &cfg);
 
     println!("Reading input files.");
-    // TODO Better error handling with nice error messages instead of a panic!
     let dataset = io::read_data(&cfg).chain_err(|| "Failed to create histogram.")?;
     println!("{}", &dataset);
 
