@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/danijoo/WHAM.svg?branch=master)](https://travis-ci.com/danijoo/WHAM)
+[![Build Status](https://travis-ci.com/danijoo/WHAM.svg?branch=master)](https://travis-ci.com/danijoo/WHAM) [![crates.io](https://img.shields.io/badge/crates.io-orange.svg?longCache=true)](https://www.crates.io/crates/wham)
 
 Weighted Histogram Analysis Method (WHAM)
 ===
