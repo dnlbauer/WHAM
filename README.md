@@ -1,4 +1,6 @@
-[![Build Status](https://travis-ci.com/danijoo/WHAM.svg?branch=master)](https://travis-ci.com/danijoo/WHAM) [![crates.io](https://img.shields.io/badge/crates.io-orange.svg?longCache=true)](https://www.crates.io/crates/wham)
+[![Build Status](https://travis-ci.com/danijoo/WHAM.svg?branch=master)](https://travis-ci.com/danijoo/WHAM) [![crates.io](https://img.shields.io/badge/crates.io-orange.svg?longCache=true)](https://www.crates.io/crates/wham) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1488598.svg)](https://doi.org/10.5281/zenodo.1488598)
+
+
 
 Weighted Histogram Analysis Method (WHAM)
 ===
@@ -95,10 +97,12 @@ TODO
 - Autocorrelation
 - Replica exchange
 
-License 
+License & Citing
 ---
 WHAM is licensed under the GPL-3.0 license. Please read the LICENSE file in this
 repository for more information.
+
+There's no publication for this WHAM implementation. However, there is a citeabe DOI. If you use this software for your work, please consider citing it: *Bauer, D, WHAM - An efficient weighted histogram analysis implementation written in Rust, Zenodo.  https://doi.org/10.5281/zenodo.1488597*
 
 Parts of this work, especially some perfomance optimizations and the I/O format, are inspired by the
 implementation of A. Grossfield (*Grossfield, A, WHAM: the weighted histogram analysis method, http://membrane.urmc.rochester.edu/content/wham*).
