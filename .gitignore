@@ -1,4 +1,4 @@
 target
 reference
 .idea
-bench.sh
+*bench.*
