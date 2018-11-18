@@ -1,11 +1,13 @@
-[![Build Status](https://travis-ci.com/danijoo/WHAM.svg?branch=master)](https://travis-ci.com/danijoo/WHAM) [![crates.io](https://img.shields.io/badge/crates.io-orange.svg?longCache=true)](https://www.crates.io/crates/wham)
+[![Build Status](https://travis-ci.com/danijoo/WHAM.svg?branch=master)](https://travis-ci.com/danijoo/WHAM) [![crates.io](https://img.shields.io/badge/crates.io-orange.svg?longCache=true)](https://www.crates.io/crates/wham) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1488598.svg)](https://doi.org/10.5281/zenodo.1488598)
+
+
 
 Weighted Histogram Analysis Method (WHAM)
 ===
 This is an fast implementation of the weighted histogram analysis method
 written in Rust. It allows the calculation of multidimensional free energy profiles
-from umbrella sampling simulations. For more details on the method, I suggest Roux, B.
-(1995). The calculation of the potential of mena force using computer simulations, CPC, 91(1), 275-282.
+from umbrella sampling simulations. For more details on the method, I suggest *Roux, B.
+(1995). The calculation of the potential of mean force using computer simulations, CPC, 91(1), 275-282.*
 
 Features
 ---
@@ -75,8 +77,8 @@ Error analysis
 WHAM can perform error analysis using the bayesian bootstrapping method. Every simulation window is assumed to be an
 individual set of data point. By calculating probabilities N times with randomly assigned weights for each window,
 one can estimate the error as standard deviation between the N bootstrapping runs. For more details see
-van der Spoel, D. et al. (2010). g_wham—A Free Weighted Histogram Analysis Implementation Including Robust Error and
-Autocorrelation Estimates, JCTC, 6(12), 3713-3720.
+*Van der Spoel, D. et al. (2010). g_wham—A Free Weighted Histogram Analysis Implementation Including Robust Error and
+Autocorrelation Estimates, JCTC, 6(12), 3713-3720*.
 
 To perform bayesian bootstrapping in WHAM, use the ```-bt <RUNS>``` flag to perform <RUNS> individual bootstrapping
 runs. The error estimates of bin probabilities and free energy will be given as separate column (+/-) in the output file.
@@ -95,10 +97,12 @@ TODO
 - Autocorrelation
 - Replica exchange
 
-License 
+License & Citing
 ---
 WHAM is licensed under the GPL-3.0 license. Please read the LICENSE file in this
 repository for more information.
 
+There's no publication for this WHAM implementation. However, there is a citeabe DOI. If you use this software for your work, please consider citing it: *Bauer, D, WHAM - An efficient weighted histogram analysis implementation written in Rust, Zenodo.  https://doi.org/10.5281/zenodo.1488597*
+
 Parts of this work, especially some perfomance optimizations and the I/O format, are inspired by the
-implementation of A. Grossfield (*A. Grossfield, "WHAM: the weighted histogram analysis method", http://membrane.urmc.rochester.edu/content/wham*).
+implementation of A. Grossfield (*Grossfield, A, WHAM: the weighted histogram analysis method, http://membrane.urmc.rochester.edu/content/wham*).
