@@ -1,5 +1,4 @@
 use std::fmt;
-use std::cell::RefCell;
 
 // One histogram
 #[derive(Debug,Clone)]
@@ -54,7 +53,7 @@ pub struct Dataset {
 	bias_fc: Vec<f64>,
 
 	// bias value cache
-	bias: RefCell<Vec<Option<f64>>>,
+	bias: Vec<f64>,
 
 	// histogram weight
 	pub weights: Vec<f64>,
@@ -64,9 +63,9 @@ impl Dataset {
 
 	pub fn new(num_bins: usize, dimens_lengths: Vec<usize>, bin_width: Vec<f64>, hist_min: Vec<f64>, hist_max: Vec<f64>, bias_pos: Vec<f64>, bias_fc: Vec<f64>, kT: f64, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
 		let num_windows = histograms.len();
-		let bias: RefCell<Vec<Option<f64>>> = RefCell::new(vec![None; num_bins*num_windows]);
+		let bias: Vec<f64> = vec![0.0; num_bins*num_windows];
 		let weights = vec![1.0; num_windows];
-		Dataset{
+		let mut ds = Dataset{
 			num_windows,
 			num_bins,
 			dimens_lengths,
@@ -80,7 +79,15 @@ impl Dataset {
 			bias_fc,
 			bias,
 			weights
+		};
+		for window in 0..num_windows {
+			for bin in 0..num_bins {
+				let ndx = window * num_bins + bin;
+				ds.bias[ndx] = ds.calc_bias(bin, window);
+			}
 		}
+		ds
+
 	}
 
 	pub fn new_weighted(ds: Dataset, weights: Vec<f64>) -> Dataset {
@@ -113,45 +120,40 @@ impl Dataset {
 		}).collect()
 	}
 
+	pub fn get_bias(&self, bin: usize, window: usize) -> f64 {
+		let ndx = window * self.num_bins + bin;
+		self.bias[ndx]
+	}
+
 	// Harmonic bias calculation: bias = 0.5*k(dx)^2
 	// if cyclic is true, lowest and highest bins are assumed to be
 	// neighbors. This returns exp(U/kT) instead of U for better performance.
-	pub fn calc_bias(&self, bin: usize, window: usize) -> f64 {
-		let ndx = window * self.num_bins + bin;
-		let mut cache = self.bias.borrow_mut();
-		match cache[ndx] {
-			Some(val) => val,
-			None => {
-				let dimens = self.dimens_lengths.len();
+	fn calc_bias(&self, bin: usize, window: usize) -> f64 {
+		let dimens = self.dimens_lengths.len();
+		// index of the bias value depends on the window und dimension
+		let bias_ndx: Vec<usize> = (0..dimens)
+			.map(|dimen| { window * dimens + dimen }).collect();
 
-				// index of the bias value depends on the window und dimension
-				let bias_ndx: Vec<usize> = (0..dimens)
-					.map(|dimen| { window * dimens + dimen }).collect();
+		// find the N coords, force constants and bias coords
+		let coord = self.get_coords_for_bin(bin);
+		let bias_fc: Vec<f64> = bias_ndx.iter().map(|ndx| { self.bias_fc[*ndx] }).collect();
+		let bias_pos: Vec<f64> = bias_ndx.iter().map(|ndx| { self.bias_pos[*ndx] }).collect();
 
-				// find the N coords, force constants and bias coords
-				let coord = self.get_coords_for_bin(bin);
-				let bias_fc: Vec<f64> = bias_ndx.iter().map(|ndx| { self.bias_fc[*ndx] }).collect();
-				let bias_pos: Vec<f64> = bias_ndx.iter().map(|ndx| { self.bias_pos[*ndx] }).collect();
-
-				let mut bias_sum = 0.0;
-				for i in 0..dimens {
-					let mut dist = (coord[i] - bias_pos[i]).abs();
-					if self.cyclic { // periodic conditions
-						let hist_len = self.hist_max[i] - self.hist_min[i];
-						if dist > 0.5 * hist_len {
-							dist -= hist_len;
-						}
-					}
-					// store exp(U/kT) for better performance
-					bias_sum += 0.5 * bias_fc[i] * dist * dist
+		let mut bias_sum = 0.0;
+		for i in 0..dimens {
+			let mut dist = (coord[i] - bias_pos[i]).abs();
+			if self.cyclic { // periodic conditions
+				let hist_len = self.hist_max[i] - self.hist_min[i];
+				if dist > 0.5 * hist_len {
+					dist -= hist_len;
 				}
-				let bias_sum = (-bias_sum/self.kT).exp();
-				cache[ndx] = Some(bias_sum);
-				bias_sum
 			}
+			// store exp(U/kT) for better performance
+			bias_sum += 0.5 * bias_fc[i] * dist * dist
 		}
+		let bias_sum = (-bias_sum/self.kT).exp();
+		bias_sum
 	}
-
 }
 
 impl fmt::Display for Dataset {
@@ -247,11 +249,11 @@ mod tests {
 		let ds = Dataset::new(
 			5, // num bins
 			vec![1],
-			vec![1.0], // bin width
-			vec![0.0], // hist min
-			vec![9.0], // hist max
-			vec![7.5], // x0
-			vec![10.0], // fc
+			vec![1.0, 1.0], // bin width
+			vec![0.0, 0.0], // hist min
+			vec![5.0, 5.0], // hist max
+			vec![7.5, 7.5], // x0
+			vec![10.0, 10.0], // fc
 			300.0*k_B, // kT
 			vec![build_hist(), build_hist()], // hists
 			false // cyclic

@@ -101,7 +101,7 @@ mod integration {
     fn wham_2d() {;
         Command::new("./target/debug/wham")
             .args(&["--bins", "100,100", "--max", "3.14,3.14", "--min", "-3.14,-3.14", "-T", "300", "--cyclic"])
-            .args(&["-f", "example/2d/metadata_unparseable1.dat"])
+            .args(&["-f", "example/2d/metadata.dat"])
             .args(&["-o", "/tmp/wham_test_2d.out"])
             .output()
             .expect("failed to execute process");

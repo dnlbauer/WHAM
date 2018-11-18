@@ -10,6 +10,7 @@ from umbrella sampling simulations. For more details on the method, I suggest Ro
 Features
 ---
 - Fast, especially for small systems
+- Multithreaded
 - Multidimensional
 - Error analysis
 - Unit tested
@@ -91,7 +92,6 @@ The example folder contains input and output files for two simple test systems:
 
 TODO
 ---
-- Multithreading (?)
 - Autocorrelation
 - Replica exchange
 

@@ -4,6 +4,7 @@
 extern crate error_chain;
 extern crate rand;
 extern crate rgsl;
+extern crate rayon;
 
 pub mod io;
 pub mod histogram;
@@ -13,6 +14,7 @@ use histogram::Dataset;
 use std::f64;
 use std::fmt;
 use std::io::prelude::*;
+use rayon::prelude::*;
 
 // init error chain
 pub mod errors { error_chain!{} }
@@ -57,10 +59,10 @@ fn is_converged(old_F: &[f64], new_F: &[f64], tolerance: f64) -> bool {
 // estimate the probability of a bin of the histogram set based on given bias offsets (F)
 // This evaluates the first WHAM equation for each bin.
 fn calc_bin_probability(bin: usize, dataset: &Dataset, F: &[f64]) -> f64 {
-    let mut denom_sum: f64 = 0.0;
+	let mut denom_sum: f64 = 0.0;
 	let bin_count: f64 = dataset.get_weighted_bin_count(bin);
     for (window, h) in dataset.histograms.iter().enumerate() {
-		let bias = dataset.calc_bias(bin, window);
+		let bias = dataset.get_bias(bin, window);
         denom_sum += (dataset.weights[window] * h.num_points as f64) * bias * F[window];
 	}
     bin_count / denom_sum
@@ -71,7 +73,7 @@ fn calc_bin_probability(bin: usize, dataset: &Dataset, F: &[f64]) -> f64 {
 fn calc_window_F(window: usize, dataset: &Dataset, P: &[f64]) -> f64 {
     let f: f64 = (0..dataset.num_bins).zip(P.iter()) // zip bins and P
         .map(|bin_and_prob: (usize, &f64)| {
-            let bias = dataset.calc_bias(bin_and_prob.0, window);
+            let bias = dataset.get_bias(bin_and_prob.0, window);
             bin_and_prob.1 * bias
         }).sum();
     1.0/f
@@ -80,18 +82,18 @@ fn calc_window_F(window: usize, dataset: &Dataset, P: &[f64]) -> f64 {
 // One full WHAM iteration includes calculation of new probabilities P and
 // new bias offsets F based on previous bias offsets F_prev. This updates
 // the values in vectors F and P
-fn perform_wham_iteration(dataset: &Dataset, F_prev: &[f64], F: &mut [f64], P: &mut [f64]) {
+fn perform_wham_iteration(dataset: &Dataset, F_prev: &[f64], F: &mut Vec<f64>, P: &mut Vec<f64>) {
 	// evaluate first WHAM equation for each bin to
-	// estimage probabilities based on previous offsets (F_prev)
-	for bin in 0..dataset.num_bins {
-		P[bin] = calc_bin_probability(bin, dataset, F_prev);
-	}
+	// estimage probabilities based on previous offsets (F_prev))
+	(0..dataset.num_bins).into_par_iter()
+		.map(|bin| { calc_bin_probability(bin, dataset, F_prev) })
+		.collect_into_vec(P);
 
 	// evaluate second WHAM equation for each window to
 	// estimate new bias offsets from propabilities
-	for window in 0..dataset.num_windows {
-		F[window] = calc_window_F(window, dataset, P);
-	}
+	(0..dataset.num_windows).into_par_iter()
+		.map(|window| {calc_window_F(window, dataset, P)} )
+		.collect_into_vec(F);
 }
 
 pub fn perform_wham(cfg: &Config, dataset: &Dataset) -> Result<(Vec<f64>, Vec<f64>, Vec<f64>)> {
