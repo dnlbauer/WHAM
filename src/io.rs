@@ -7,6 +7,7 @@ use std::io::{BufReader,BufWriter};
 use k_B;
 use std::path::Path;
 use super::errors::*;
+use f64;
 
 // Returns the path to path2 relative to path1
 // path1: "path/to/file.dat"
@@ -112,7 +113,7 @@ fn is_in_hist_boundaries(values: &Vec<f64>, cfg: &Config) -> bool {
 // parse a timeseries file into a histogram
 fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
 	let f = File::open(window_file)
-        .chain_err(|| format!("Failed to open sample data file {}", window_file))?;
+        .chain_err(|| format!("Failed to open sample data file {}.", window_file))?;
     let mut buf = BufReader::new(&f);
 
     // total number of bins is the product of all dimensions length
@@ -126,7 +127,9 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
 
     // read and parse each timeseries line
     let mut line = String::new();
+    let mut linecount = 0;
     while buf.read_line(&mut line).chain_err(|| "Failed to read line")? > 0 {
+        linecount += 1;
         // skip comments and empty lines
         if line.starts_with("#") || line.starts_with("@") || line.len() == 0 {
             line.clear();
@@ -134,12 +137,22 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
         }
 
         {
-            let mut split = line.split_whitespace();
 
-            split.next(); // skip time/step column
-            let values: Vec<f64> = (0..cfg.dimens).collect::<Vec<usize>>().iter().map(|_| {
-                split.next().unwrap().parse::<f64>().unwrap()
-            }).collect();
+            let split: Vec<&str> = line.split_whitespace().collect();
+            if split.len() < cfg.dimens+1 {
+                bail!(format!("Wrong number of columns in line {} of window file {}. Empty Line?.", linecount, window_file));
+            }
+
+            let mut values: Vec<f64> = vec![f64::NAN; cfg.dimens];
+            for i in 0..values.len() {
+                values[i] = split[i+1].parse::<f64>()
+                    .chain_err(|| format!("Failed to parse line {} of window file {}.", linecount, window_file))?;
+            }
+            println!("{:?}", values);
+
+            // (1..cfg.dimens).collect::<Vec<usize>>().iter().map(|_| {
+            //     split.next().unwrap().parse::<f64>().unwrap()
+            // }).collect();
 
             if is_in_hist_boundaries(&values, cfg) {
                 let bin_indeces = (0..cfg.dimens).map(|dimen: usize| {

@@ -78,6 +78,36 @@ mod integration {
     }
 
     #[test]
+    fn unparseable_timeseries() {
+        let output = Command::new("./target/debug/wham")
+            .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
+            .args(&["-f", "tests/metadata_unparseable3.dat"])
+            .args(&["-o", "/dev/null"])
+            .output()
+            .expect("failed to execute process");
+        let output = String::from_utf8_lossy(&output.stderr);
+        println!("{}", output);
+        assert!(output.to_string().contains(
+            "Failed to parse line"
+        ));
+    }
+
+    #[test]
+    fn unparseable_timeseries_empty() {
+        let output = Command::new("./target/debug/wham")
+            .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
+            .args(&["-f", "tests/metadata_unparseable4.dat"])
+            .args(&["-o", "/dev/null"])
+            .output()
+            .expect("failed to execute process");
+        let output = String::from_utf8_lossy(&output.stderr);
+        println!("{}", output);
+        assert!(output.to_string().contains(
+            "Wrong number of columns in line"
+        ));
+    }
+
+    #[test]
     fn wham_1d() {;
         Command::new("./target/debug/wham")
             .args(&["--bins", "100", "--max", "3.14", "--min", "-3.14", "-T", "300", "--cyclic"])
