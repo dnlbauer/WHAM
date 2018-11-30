@@ -148,11 +148,6 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
                 values[i] = split[i+1].parse::<f64>()
                     .chain_err(|| format!("Failed to parse line {} of window file {}.", linecount, window_file))?;
             }
-            println!("{:?}", values);
-
-            // (1..cfg.dimens).collect::<Vec<usize>>().iter().map(|_| {
-            //     split.next().unwrap().parse::<f64>().unwrap()
-            // }).collect();
 
             if is_in_hist_boundaries(&values, cfg) {
                 let bin_indeces = (0..cfg.dimens).map(|dimen: usize| {
