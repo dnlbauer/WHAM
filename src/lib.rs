@@ -38,6 +38,8 @@ pub struct Config {
 	pub cyclic: bool,
 	pub output: String,
 	pub bootstrap: usize,
+    pub start: f64,
+    pub end: f64,
 }
 
 impl fmt::Display for Config {

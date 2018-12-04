@@ -30,7 +30,11 @@ fn cli() -> Result<Config> {
         .split(',').map(|x| { x.parse().unwrap() }).collect();
 	let bootstrap: usize = matches.value_of("bootstrap").unwrap_or("0").parse()
 		.chain_err(|| "Cannot parse bootstrap iteration.")?;
-
+    let start: f64 = matches.value_of("start").unwrap_or("0").parse()
+        .chain_err(|| "Cannot parse start time.")?;
+    let end: f64 = matches.value_of("end").unwrap_or("1e+20").parse()
+        .chain_err(|| "Cannot parse end time.")?;
+     
     if num_bins.len() != hist_max.len() || num_bins.len() != hist_max.len() {
         eprintln!("Input dimensions do not match (min: {}, max: {}, bins: {})",
                   hist_min.len(), hist_max.len(), num_bins.len());
@@ -41,7 +45,7 @@ fn cli() -> Result<Config> {
 
 	Ok(wham::Config{metadata_file, hist_min, hist_max, num_bins, dimens,
 		verbose, tolerance, max_iterations, temperature, cyclic, output,
-		bootstrap})
+		bootstrap, start, end})
 }
 
 fn main() {

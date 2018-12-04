@@ -17,21 +17,6 @@ mod integration {
     }
 
     #[test]
-    fn data_out_of_bonds() {
-        let output = Command::new("./target/debug/wham")
-            .args(&["--bins", "100", "--min", "2.0", "--max", "3.0", "-T", "300"])
-            .args(&["-f", "example/1d/metadata.dat"])
-            .args(&["-o", "/dev/null"])
-            .output()
-            .expect("failed to execute process");
-        let output = String::from_utf8_lossy(&output.stderr);
-        println!("{}", output);
-        assert!(output.to_string().contains(
-            "No data points in histogram boundaries"
-        ));
-    }
-
-    #[test]
     fn unparseable_bias_pos() {
         let output = Command::new("./target/debug/wham")
             .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
@@ -106,6 +91,25 @@ mod integration {
             "Wrong number of columns in line"
         ));
     }
+
+    #[test]
+    fn skip_rows() {
+        let output = Command::new("./target/debug/wham")
+            .args(&["--bins", "100", "--max", "3.14", "--min", "-3.14", "-T", "300", "--cyclic"])
+            .args(&["-f", "example/1d/metadata.dat"])
+            .args(&["-o", "/tmp/wham_test_1d.out"])
+            .args(&["--start", "50", "--end", "60"])
+            .args(&["-v"])
+            .output()
+            .expect("failed to execute process");
+
+        let output = String::from_utf8_lossy(&output.stdout);
+        println!("{}", output);
+        assert!(output.to_string().contains(
+            "25 windows, 12489 datapoints"
+        ));
+    }
+
 
     #[test]
     fn wham_1d() {;

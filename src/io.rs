@@ -101,13 +101,21 @@ fn flat_index(indeces: &Vec<usize>, lengths: &Vec<usize>) -> usize {
 }
 
 // returns true if the values are inside the histogram boundaries defined by cfg
-fn is_in_hist_boundaries(values: &Vec<f64>, cfg: &Config) -> bool {
+fn is_in_hist_boundaries(values: &[f64], cfg: &Config) -> bool {
     for dimen in 0..cfg.dimens {
         if values[dimen] < cfg.hist_min[dimen] || values[dimen] > cfg.hist_max[dimen] {
             return false
         }
     }
     true
+}
+
+// returns true given time in inside the time boundaries defined by cfg
+fn is_in_time_boundaries(time: f64, cfg: &Config) -> bool {
+    if cfg.start <= time && time <= cfg.end {
+        return true
+    }
+    false
 }
 
 // parse a timeseries file into a histogram
@@ -143,15 +151,15 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
                 bail!(format!("Wrong number of columns in line {} of window file {}. Empty Line?.", linecount, window_file));
             }
 
-            let mut values: Vec<f64> = vec![f64::NAN; cfg.dimens];
+            let mut values: Vec<f64> = vec![f64::NAN; cfg.dimens+1];
             for i in 0..values.len() {
-                values[i] = split[i+1].parse::<f64>()
+                values[i] = split[i].parse::<f64>()
                     .chain_err(|| format!("Failed to parse line {} of window file {}.", linecount, window_file))?;
             }
 
-            if is_in_hist_boundaries(&values, cfg) {
+            if is_in_hist_boundaries(&values[1..], cfg) && is_in_time_boundaries(values[0], cfg) {
                 let bin_indeces = (0..cfg.dimens).map(|dimen: usize| {
-                    let val = values[dimen];
+                    let val = values[dimen+1];
                     ((val - cfg.hist_min[dimen]) / bin_width[dimen]) as usize
                 }).collect();
                 let index = flat_index(&bin_indeces, &cfg.num_bins);
@@ -203,6 +211,8 @@ mod tests {
             cyclic: false,
             output: "qwert".to_string(),
             bootstrap: 0,
+            start: 0.0,
+            end: 1e+20
         }
     }
 
