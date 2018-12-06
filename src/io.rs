@@ -103,7 +103,7 @@ fn flat_index(indeces: &Vec<usize>, lengths: &Vec<usize>) -> usize {
 // returns true if the values are inside the histogram boundaries defined by cfg
 fn is_in_hist_boundaries(values: &[f64], cfg: &Config) -> bool {
     for dimen in 0..cfg.dimens {
-        if values[dimen] < cfg.hist_min[dimen] || values[dimen] > cfg.hist_max[dimen] {
+        if values[dimen] < cfg.hist_min[dimen] || values[dimen] >= cfg.hist_max[dimen] {
             return false
         }
     }
