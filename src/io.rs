@@ -199,7 +199,7 @@ mod tests {
 
     fn cfg() -> Config {
         Config {
-            metadata_file: "example/1d/metadata.dat".to_string(),
+            metadata_file: "example/1d_cyclic/metadata.dat".to_string(),
             hist_min: vec![-3.14],
             hist_max: vec![3.14],
             num_bins: vec![10],
@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn read_window_file() {
-        let f = "example/1d/COLVAR+0.0.xvg";
+        let f = "example/1d_cyclic/COLVAR+0.0.xvg";
         let cfg = cfg();
         let h = super::read_window_file(&f, &cfg).unwrap();
         println!("{:?}", h);

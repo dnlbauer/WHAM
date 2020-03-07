@@ -88,12 +88,14 @@ Examples
 ---
 The example folder contains input and output files for two simple test systems:
 
-- 1d: Phi torsion angle of dialanine in vaccum
-- 2d: Phi and psi torsion angles of the same system
+- 1d: Hyaluronan-CD44 binding (See https://doi.org/10.1371/journal.pcbi.1005663) 
+- 1d_cyclic: Phi torsion angle of dialanine in vaccum
+- 2d_cyclic: Phi and psi torsion angles of the same system
 
 
 TODO
 ---
+- better error estimation
 - Autocorrelation
 - Replica exchange
 

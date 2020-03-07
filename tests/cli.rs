@@ -20,7 +20,7 @@ mod integration {
     fn unparseable_bias_pos() {
         let output = Command::new("./target/debug/wham")
             .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
-            .args(&["-f", "tests/metadata_unparseable1.dat"])
+            .args(&["-f", "tests/data/metadata_unparseable1.dat"])
             .args(&["-o", "/dev/null"])
             .output()
             .expect("failed to execute process");
@@ -35,7 +35,7 @@ mod integration {
     fn unparseable_bias_fc() {
         let output = Command::new("./target/debug/wham")
             .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
-            .args(&["-f", "tests/metadata_unparseable2.dat"])
+            .args(&["-f", "tests/data/metadata_unparseable2.dat"])
             .args(&["-o", "/dev/null"])
             .output()
             .expect("failed to execute process");
@@ -51,7 +51,7 @@ mod integration {
         let output = Command::new("./target/debug/wham")
             .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
             .args(&["--iterations", "10"])
-            .args(&["-f", "example/1d/metadata.dat"])
+            .args(&["-f", "example/1d_cyclic/metadata.dat"])
             .args(&["-o", "/dev/null"])
             .output()
             .expect("failed to execute process");
@@ -66,7 +66,7 @@ mod integration {
     fn unparseable_timeseries() {
         let output = Command::new("./target/debug/wham")
             .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
-            .args(&["-f", "tests/metadata_unparseable3.dat"])
+            .args(&["-f", "tests/data/metadata_unparseable3.dat"])
             .args(&["-o", "/dev/null"])
             .output()
             .expect("failed to execute process");
@@ -81,7 +81,7 @@ mod integration {
     fn unparseable_timeseries_empty() {
         let output = Command::new("./target/debug/wham")
             .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
-            .args(&["-f", "tests/metadata_unparseable4.dat"])
+            .args(&["-f", "tests/data/metadata_unparseable4.dat"])
             .args(&["-o", "/dev/null"])
             .output()
             .expect("failed to execute process");
@@ -96,8 +96,8 @@ mod integration {
     fn skip_rows() {
         let output = Command::new("./target/debug/wham")
             .args(&["--bins", "100", "--max", "3.14", "--min", "-3.14", "-T", "300", "--cyclic"])
-            .args(&["-f", "example/1d/metadata.dat"])
-            .args(&["-o", "/tmp/wham_test_1d.out"])
+            .args(&["-f", "example/1d_cyclic/metadata.dat"])
+            .args(&["-o", "/tmp/wham_test_1d_cyclic.out"])
             .args(&["--start", "50", "--end", "60"])
             .args(&["-v"])
             .output()
@@ -110,43 +110,4 @@ mod integration {
         ));
     }
 
-
-    #[test]
-    fn wham_1d() {;
-        Command::new("./target/debug/wham")
-            .args(&["--bins", "100", "--max", "3.14", "--min", "-3.14", "-T", "300", "--cyclic"])
-            .args(&["-f", "example/1d/metadata.dat"])
-            .args(&["-o", "/tmp/wham_test_1d.out"])
-            .output()
-            .expect("failed to execute process");
-
-        assert!(fs::metadata("/tmp/wham_test_1d.out").is_ok());
-        let output = Command::new("diff")
-            .arg("/tmp/wham_test_1d.out")
-            .arg("example/1d/wham.out")
-            .output()
-            .expect("failed to run diff");
-        let output_len = String::from_utf8_lossy(&output.stdout).len();
-        assert_eq!(output_len, 0);
-    }
-
-    #[test]
-    #[ignore] // expensive
-    fn wham_2d() {;
-        Command::new("./target/debug/wham")
-            .args(&["--bins", "100,100", "--max", "3.14,3.14", "--min", "-3.14,-3.14", "-T", "300", "--cyclic"])
-            .args(&["-f", "example/2d/metadata.dat"])
-            .args(&["-o", "/tmp/wham_test_2d.out"])
-            .output()
-            .expect("failed to execute process");
-
-        assert!(fs::metadata("/tmp/wham_test_2d.out").is_ok());
-        let output = Command::new("diff")
-            .arg("/tmp/wham_test_2d.out")
-            .arg("example/2d/wham.out")
-            .output()
-            .expect("failed to run diff");
-        let output_len = String::from_utf8_lossy(&output.stdout).len();
-        assert_eq!(output_len, 0);
-    }
 }
