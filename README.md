@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/danijoo/WHAM.svg?branch=master)](https://travis-ci.com/danijoo/WHAM) [![crates.io](https://img.shields.io/badge/crates.io-orange.svg?longCache=true)](https://www.crates.io/crates/wham) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1488598.svg)](https://doi.org/10.5281/zenodo.1488598)
+[![Build Status](https://travis-ci.com/danijoo/WHAM.svg?branch=master)](https://travis-ci.com/danijoo/WHAM) [![crates.io](https://img.shields.io/badge/crates.io-orange.svg?longCache=true)](https://www.crates.io/crates/wham) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1488597.svg)](https://doi.org/10.5281/zenodo.1488597)
 
 
 
