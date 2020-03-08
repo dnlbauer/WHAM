@@ -5,4 +5,5 @@ wham --max pi --min -pi --cyclic\
     --bins 100 \
     -T 300 \
     -f metadata.dat \
-    -o wham.out
+    -o wham.out \
+    --bt 100 --seed 1234
