@@ -1,14 +1,14 @@
-use std::process::Command;
-use std::fs;
+mod command;
 
 #[cfg(test)]
 mod integration {
-    use Command;
-    use fs;
+
+    use std::process::Command;
+    use super::command::get_command;
 
     #[test]
     fn no_args() {
-        let output = Command::new("./target/debug/wham")
+        let output = get_command()
             .output()
             .expect("failed to execute process");
         let expected_error = "The following required arguments were not provided";
@@ -18,7 +18,7 @@ mod integration {
 
     #[test]
     fn unparseable_bias_pos() {
-        let output = Command::new("./target/debug/wham")
+        let output = get_command()
             .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
             .args(&["-f", "tests/data/metadata_unparseable1.dat"])
             .args(&["-o", "/dev/null"])
@@ -33,7 +33,7 @@ mod integration {
 
     #[test]
     fn unparseable_bias_fc() {
-        let output = Command::new("./target/debug/wham")
+        let output = get_command()
             .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
             .args(&["-f", "tests/data/metadata_unparseable2.dat"])
             .args(&["-o", "/dev/null"])
@@ -48,7 +48,7 @@ mod integration {
 
     #[test]
     fn no_convergence() {
-        let output = Command::new("./target/debug/wham")
+        let output = get_command()
             .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
             .args(&["--iterations", "10"])
             .args(&["-f", "example/1d_cyclic/metadata.dat"])
@@ -64,7 +64,7 @@ mod integration {
 
     #[test]
     fn unparseable_timeseries() {
-        let output = Command::new("./target/debug/wham")
+        let output = get_command()
             .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
             .args(&["-f", "tests/data/metadata_unparseable3.dat"])
             .args(&["-o", "/dev/null"])
@@ -79,7 +79,7 @@ mod integration {
 
     #[test]
     fn unparseable_timeseries_empty() {
-        let output = Command::new("./target/debug/wham")
+        let output = get_command()
             .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
             .args(&["-f", "tests/data/metadata_unparseable4.dat"])
             .args(&["-o", "/dev/null"])
@@ -94,7 +94,7 @@ mod integration {
 
     #[test]
     fn skip_rows() {
-        let output = Command::new("./target/debug/wham")
+        let output = get_command()
             .args(&["--bins", "100", "--max", "3.14", "--min", "-3.14", "-T", "300", "--cyclic"])
             .args(&["-f", "example/1d_cyclic/metadata.dat"])
             .args(&["-o", "/tmp/wham_test_1d_cyclic.out"])

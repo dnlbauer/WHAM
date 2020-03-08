@@ -31,14 +31,14 @@ args:
         takes_value: true
         required: true
         allow_hyphen_values: true
-        help: Histogram minima (comma separated for multiple dimensions).
+        help: Histogram minima (comma separated for multiple dimensions). Also accepts "pi".
     - max_hist:
         long: max
         value_name: HIST_MAX
         takes_value: true
         required: true
         allow_hyphen_values: true
-        help: Histogram maxima (comma separated)
+        help: Histogram maxima (comma separated). Also accepts "pi".
     - bins:
         short: b
         long: bins

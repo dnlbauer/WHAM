@@ -23,9 +23,25 @@ fn cli() -> Result<Config> {
     let cyclic: bool = matches.is_present("cyclic");
 
 	let hist_min: Vec<f64> = matches.value_of("min_hist").unwrap()
-        .split(',').map(|x| { x.parse().unwrap() }).collect();
+        .split(',').map(|x| {
+            if x.to_ascii_lowercase() == "pi" {
+                std::f64::consts::PI
+            } else if x.to_ascii_lowercase() == "-pi" {
+                -std::f64::consts::PI
+            } else {
+                x.parse().unwrap()
+            }
+        }).collect();
 	let hist_max: Vec<f64> = matches.value_of("max_hist").unwrap()
-        .split(',').map(|x| { x.parse().unwrap() }).collect();
+        .split(',').map(|x| {
+            if x.to_ascii_lowercase() == "pi" {
+                std::f64::consts::PI
+            } else if x.to_ascii_lowercase() == "-pi" {
+                -std::f64::consts::PI
+            } else {
+                x.parse().unwrap()
+            }
+        }).collect();
 	let num_bins: Vec<usize> = matches.value_of("bins").unwrap()
         .split(',').map(|x| { x.parse().unwrap() }).collect();
 	let bootstrap: usize = matches.value_of("bootstrap").unwrap_or("0").parse()

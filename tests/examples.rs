@@ -1,14 +1,15 @@
-use std::process::Command;
-use std::fs;
+mod command;
 
 #[cfg(test)]
 mod integration {
-    use Command;
-    use fs;
+
+    use std::process::Command;
+    use std::fs;
+    use super::command::get_command;
 
     #[test]
     fn wham_1d() {
-        Command::new("./target/debug/wham")
+        get_command()
             .args(&["--bins", "100", "--max", "4.5", "--min", "0.7", "-T", "310"])
             .args(&["-f", "example/1d/metadata.dat"])
             .args(&["-o", "/tmp/wham_test_1d.out"])
@@ -27,8 +28,8 @@ mod integration {
 
     #[test]
     fn wham_1d_cyclic() {
-        Command::new("./target/debug/wham")
-            .args(&["--bins", "100", "--max", "3.14", "--min", "-3.14", "-T", "300", "--cyclic"])
+        get_command()
+            .args(&["--bins", "100", "--max", "pi", "--min", "-pi", "-T", "300", "--cyclic"])
             .args(&["-f", "example/1d_cyclic/metadata.dat"])
             .args(&["-o", "/tmp/wham_test_1d_cyclic.out"])
             .output()
@@ -47,8 +48,8 @@ mod integration {
     #[test]
     #[ignore] // expensive
     fn wham_2d_cyclic() {
-        Command::new("./target/debug/wham")
-            .args(&["--bins", "100,100", "--max", "3.14,3.14", "--min", "-3.14,-3.14", "-T", "300", "--cyclic"])
+        get_command()
+            .args(&["--bins", "100,100", "--max", "pi,pi", "--min", "-pi,-pi", "-T", "300", "--cyclic"])
             .args(&["-f", "example/2d_cyclic/metadata.dat"])
             .args(&["-o", "/tmp/wham_test_2d_cyclic.out"])
             .output()
