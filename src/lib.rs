@@ -38,14 +38,17 @@ pub struct Config {
 	pub cyclic: bool,
 	pub output: String,
 	pub bootstrap: usize,
+    pub bootstrap_seed: u64,
     pub start: f64,
     pub end: f64,
 }
 
 impl fmt::Display for Config {
 	 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-         write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?} verbose={}, tolerance={}, iterations={}, temperature={}, cyclic={:?}, bootstrap={:?}", self.metadata_file, self.hist_min, self.hist_max, self.num_bins,
-                self.verbose, self.tolerance, self.max_iterations, self.temperature, self.cyclic, self.bootstrap)
+         write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?} verbose={}, tolerance={}, iterations={}, temperature={}, cyclic={:?}, bootstrap={:?}, seed={:?}",
+            self.metadata_file, self.hist_min, self.hist_max, self.num_bins,
+            self.verbose, self.tolerance, self.max_iterations, self.temperature,
+            self.cyclic, self.bootstrap, self.bootstrap_seed)
     }
 }
 

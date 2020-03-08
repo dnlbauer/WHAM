@@ -86,6 +86,11 @@ args:
         help: Number of bayesian bootstrapping runs for error analysis by assigning random weights (defaults to 0).
         takes_value: true
         required: false
+    - bootstrap_seed:
+        long: seed
+        help: Random seed for bootstrapping runs.
+        takes_value: true
+        required: false
     - start:
         long: start
         help: Skip rows in timeseries with an index smaller than this value (defaults to 0)

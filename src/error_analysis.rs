@@ -1,4 +1,4 @@
-use rand;
+use rand::{SeedableRng, StdRng, Rng};
 use super::histogram::{Dataset};
 use super::perform_wham;
 use super::Config;
@@ -7,9 +7,9 @@ use rgsl::statistics;
 // returns a set of num_windows continious weights by
 // a) generate num_windows-1 random variables and sort them
 // b) each weight n is the difference between n+1 and n, where n0=0 and nN+1=1
-fn generate_random_weights(num_windows: usize) -> Vec<f64> {
+fn generate_random_weights(num_windows: usize, rng: &mut StdRng) -> Vec<f64> {
     // create a list of num_windows - 1 sorted random numbers and append/prepend 0 and 1
-    let mut tmp = (0..num_windows-1).map(|_| rand::random::<f64>()).collect::<Vec<f64>>();
+    let mut tmp = (0..num_windows-1).map(|_| rng.gen::<f64>()).collect::<Vec<f64>>();
     tmp.sort_by(|a,b| { a.partial_cmp(b).unwrap() });
     let mut rnds = vec![0.0];
     rnds.append(&mut tmp);
@@ -24,8 +24,8 @@ fn generate_random_weights(num_windows: usize) -> Vec<f64> {
 }
 
 // Generate a random weighted dataset from the given dataset by changing the weights
-fn generate_random_weighted_dataset(ds: Dataset) -> Dataset {
-    let weights = generate_random_weights(ds.num_windows);
+fn generate_random_weighted_dataset(ds: Dataset, rng: &mut StdRng) -> Dataset {
+    let weights = generate_random_weights(ds.num_windows, rng);
     Dataset::new_weighted(ds, weights)
 }
 
@@ -33,10 +33,13 @@ fn generate_random_weighted_dataset(ds: Dataset) -> Dataset {
 // datasets. The standard deviation is calculated on the bootstrapped probabilities of each bin. The
 // standard deviation of the free eneergy is then deduced by error propagation (A_std = kT*1/P*P_std)
 pub fn run_bootstrap(cfg: &Config, ds: Dataset, P: &[f64], num_runs: usize) -> (Vec<f64>,Vec<f64>) {
+    // seed the rng
+    let mut rng: StdRng = SeedableRng::seed_from_u64(cfg.bootstrap_seed);
+
     // Calculate bootstrapped probabilities
     let bootstrapped_Ps: Vec<Vec<f64>> = (0..num_runs).map(|x| {
         println!("Bootstrap run {}/{}", x, num_runs);
-        let rnd_weighted_dataset = generate_random_weighted_dataset(ds.clone());
+        let rnd_weighted_dataset = generate_random_weighted_dataset(ds.clone(), &mut rng);
         perform_wham(cfg, &rnd_weighted_dataset).unwrap().0
     }).collect();
 

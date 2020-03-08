@@ -1,6 +1,7 @@
 extern crate wham;
 #[macro_use]
 extern crate clap;
+extern crate rand;
 
 use clap::App;
 use wham::Config;
@@ -46,6 +47,13 @@ fn cli() -> Result<Config> {
         .split(',').map(|x| { x.parse().unwrap() }).collect();
 	let bootstrap: usize = matches.value_of("bootstrap").unwrap_or("0").parse()
 		.chain_err(|| "Cannot parse bootstrap iteration.")?;
+    let bootstrap_seed: u64 = matches.value_of("bootstrap_seed")
+        .unwrap_or({
+            use rand::Rng;
+            let mut rng = rand::thread_rng();
+            &rng.gen::<u32>().to_string()
+        }).parse()
+        .chain_err(|| "Cannot parse bootstrap iteration.")?;
     let start: f64 = matches.value_of("start").unwrap_or("0").parse()
         .chain_err(|| "Cannot parse start time.")?;
     let end: f64 = matches.value_of("end").unwrap_or("1e+20").parse()
@@ -61,7 +69,7 @@ fn cli() -> Result<Config> {
 
 	Ok(wham::Config{metadata_file, hist_min, hist_max, num_bins, dimens,
 		verbose, tolerance, max_iterations, temperature, cyclic, output,
-		bootstrap, start, end})
+		bootstrap, bootstrap_seed, start, end})
 }
 
 fn main() {
