@@ -352,7 +352,7 @@ checksum = "078775d0255232fb988e6fccf26ddc9d1ac274299aaedcedce21c6f72cc533ce"
 
 [[package]]
 name = "wham"
-version = "0.9.5"
+version = "0.9.6"
 dependencies = [
  "GSL",
  "clap",
