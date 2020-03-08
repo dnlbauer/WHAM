@@ -8,9 +8,11 @@ mod integration {
     use super::command::get_command;
 
     #[test]
+    #[ignore] // expensive
     fn wham_1d() {
         get_command()
             .args(&["--bins", "100", "--max", "4.5", "--min", "0.7", "-T", "310"])
+            .args(&["--bt", "100", "--seed", "1234"])
             .args(&["-f", "example/1d/metadata.dat"])
             .args(&["-o", "/tmp/wham_test_1d.out"])
             .output()
@@ -27,6 +29,7 @@ mod integration {
     }
 
     #[test]
+    #[ignore] // expensive
     fn wham_1d_cyclic() {
         get_command()
             .args(&["--bins", "100", "--max", "pi", "--min", "-pi", "-T", "300", "--cyclic"])

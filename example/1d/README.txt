@@ -10,3 +10,4 @@ wham --min 0.7 --max 4.5
     -T 310
     -f metadata.dat
     -o wham.out
+    --bt 100 --seed 1234

@@ -211,6 +211,7 @@ mod tests {
             cyclic: false,
             output: "qwert".to_string(),
             bootstrap: 0,
+            bootstrap_seed: 1234,
             start: 0.0,
             end: 1e+20
         }
