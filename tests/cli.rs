@@ -2,8 +2,6 @@ mod command;
 
 #[cfg(test)]
 mod integration {
-
-    use std::process::Command;
     use super::command::get_command;
 
     #[test]

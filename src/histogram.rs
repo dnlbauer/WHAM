@@ -61,7 +61,9 @@ pub struct Dataset {
 
 impl Dataset {
 
-	pub fn new(num_bins: usize, dimens_lengths: Vec<usize>, bin_width: Vec<f64>, hist_min: Vec<f64>, hist_max: Vec<f64>, bias_pos: Vec<f64>, bias_fc: Vec<f64>, kT: f64, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
+	pub fn new(num_bins: usize, dimens_lengths: Vec<usize>, bin_width: Vec<f64>,
+        hist_min: Vec<f64>, hist_max: Vec<f64>, bias_pos: Vec<f64>,
+        bias_fc: Vec<f64>, kT: f64, histograms: Vec<Histogram>, cyclic: bool) -> Dataset {
 		let num_windows = histograms.len();
 		let bias: Vec<f64> = vec![0.0; num_bins*num_windows];
 		let weights = vec![1.0; num_windows];
@@ -92,7 +94,7 @@ impl Dataset {
 
 	pub fn new_weighted(ds: Dataset, weights: Vec<f64>) -> Dataset {
 		Dataset {
-			weights: weights,
+			weights,
 			..ds
 		}
 	}
@@ -107,7 +109,7 @@ impl Dataset {
     	for dimen in (1..lengths.len()).rev() {
         	let denom = lengths.iter().take(dimen).fold(1, |s,&x| s*x);
 			idx[dimen] = tmp / denom;
-        	tmp = tmp % denom;
+        	tmp %= denom;
     	}
     	idx[0] = tmp;
     	idx
@@ -151,8 +153,7 @@ impl Dataset {
 			// store exp(U/kT) for better performance
 			bias_sum += 0.5 * bias_fc[i] * dist * dist
 		}
-		let bias_sum = (-bias_sum/self.kT).exp();
-		bias_sum
+		(-bias_sum/self.kT).exp()
 	}
 }
 
@@ -205,13 +206,13 @@ mod tests {
 		let ds = build_hist_set(); // k = 10
 
 		// 3th element -> x=3.5, x0=3.5
-		assert_delta!(0.134722337796, ds.calc_bias(3, 0), 0.00000001);
+		assert_delta!(0.134_722_337_796, ds.calc_bias(3, 0), 0.000_000_01);
 
 		// 8th element -> x=8.5, x0=3.5
-		assert_delta!(1.0, ds.calc_bias(4,0), 0.00000001);
+		assert_delta!(1.0, ds.calc_bias(4,0), 0.000_000_01);
 		
 		// 1st element -> x=0.5, x0=3.5. non-cyclic!
-		assert_delta!(0.0, ds.calc_bias(0,0), 0.0000001);
+		assert_delta!(0.0, ds.calc_bias(0,0), 0.000_000_1);
 	}
 
 	#[test]
@@ -220,18 +221,18 @@ mod tests {
 		ds.cyclic = true;
 
 		// 7th element -> x=3.5, x0=3.5
-		assert_delta!(0.134722337796, ds.calc_bias(3, 0), 0.00000001);
+		assert_delta!(0.134_722_337_796, ds.calc_bias(3, 0), 0.000_000_01);
 
 		// 8th element -> x=4.5, x0=3.5
-		assert_delta!(1.0, ds.calc_bias(4, 0), 0.00000001);
+		assert_delta!(1.0, ds.calc_bias(4, 0), 0.000_000_01);
 		
 
 		// 1th element -> x=0.5, x0=3.5
 		// cyclic flag makes bin 0 neighboring bin 9, so the distance is actually 2
-		assert_delta!(0.0000000000000117769, ds.calc_bias(0, 0), 0.00000001);
+		assert_delta!(0.000_000_000_000_011_776_9, ds.calc_bias(0, 0), 0.000_000_01);
 
 		// 2nd element -> x=1.5, x0=3.5
-		assert_delta!(0.00000001, ds.calc_bias(1, 0), 0.00000001);
+		assert_delta!(0.000_000_01, ds.calc_bias(1, 0), 0.000_000_01);
 	}
 
 	#[test]
@@ -258,10 +259,10 @@ mod tests {
 			vec![build_hist(), build_hist()], // hists
 			false // cyclic
 		);
-		assert_delta!(2.0, ds.get_weighted_bin_count(0), 0.0000000001);
-		assert_delta!(2.0, ds.get_weighted_bin_count(1), 0.0000000001);
-		assert_delta!(6.0, ds.get_weighted_bin_count(2), 0.0000000001);
-		assert_delta!(10.0, ds.get_weighted_bin_count(3), 0.0000000001);
-		assert_delta!(24.0, ds.get_weighted_bin_count(4), 0.0000000001);
+		assert_delta!(2.0, ds.get_weighted_bin_count(0), 0.000_000_000_1);
+		assert_delta!(2.0, ds.get_weighted_bin_count(1), 0.000_000_000_1);
+		assert_delta!(6.0, ds.get_weighted_bin_count(2), 0.000_000_000_1);
+		assert_delta!(10.0, ds.get_weighted_bin_count(3), 0.000_000_000_1);
+		assert_delta!(24.0, ds.get_weighted_bin_count(4), 0.000_000_000_1);
 	}
 }

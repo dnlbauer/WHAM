@@ -46,7 +46,7 @@ pub fn read_data(cfg: &Config) -> Result<Dataset> {
     	let line = l.chain_err(|| "Failed to read line")?;
 
         // skip comments and empty lines
-        if line.starts_with("#") || line.len() == 0 {
+        if line.starts_with('#') || line.is_empty() {
     		continue;
     	}
 
@@ -79,7 +79,7 @@ pub fn read_data(cfg: &Config) -> Result<Dataset> {
         }
     }
     
-    if histograms.len() > 0 {
+    if !histograms.is_empty() {
         Ok(Dataset::new(num_bins, dimens_length, bin_width, cfg.hist_min.clone(), cfg.hist_max.clone(), bias_pos, bias_fc, kT, histograms, cfg.cyclic))
     } else {
         bail!("Histogram has no datapoints.")
@@ -174,14 +174,16 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
 }
 
 // Write WHAM calculation results to out_file.
-pub fn write_results(out_file: &str, ds: &Dataset, free: &Vec<f64>, free_std: &Vec<f64>, prob: &Vec<f64>, prob_std: &Vec<f64>) -> Result<()> {
+pub fn write_results(out_file: &str, ds: &Dataset, free: &[f64],
+    free_std: &[f64], prob: &[f64], prob_std: &[f64]) -> Result<()> {
     let output = File::create(out_file)
         .chain_err(|| format!("Failed to create file with path {}", out_file))?;
     let mut buf = BufWriter::new(output);
 
     let header: String = (0..ds.dimens_lengths.len()).map(|d| format!("coord{}", d+1))
         .collect::<Vec<String>>().join("    ");
-    writeln!(buf, "#{}    {}    {}    {}    {}", header, "Free Energy", "+/-", "Probability", "+/-");
+    writeln!(buf, "#{}    {}    {}    {}    {}",
+        header, "Free Energy", "+/-", "Probability", "+/-").unwrap();
 
     for bin in 0..free.len() {
         let coords = ds.get_coords_for_bin(bin);
@@ -200,6 +202,7 @@ mod tests {
     fn cfg() -> Config {
         Config {
             metadata_file: "example/1d_cyclic/metadata.dat".to_string(),
+
             hist_min: vec![-3.14],
             hist_max: vec![3.14],
             num_bins: vec![10],

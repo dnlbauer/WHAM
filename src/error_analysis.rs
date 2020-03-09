@@ -20,7 +20,7 @@ fn generate_random_weights(num_windows: usize, rng: &mut StdRng) -> Vec<f64> {
     for i in 0..num_windows {
         weights[i] = rnds[i+1] - rnds[i]
     }
-    return weights
+    weights
 }
 
 // Generate a random weighted dataset from the given dataset by changing the weights

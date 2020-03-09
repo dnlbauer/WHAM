@@ -45,7 +45,9 @@ pub struct Config {
 
 impl fmt::Display for Config {
 	 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-         write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?} verbose={}, tolerance={}, iterations={}, temperature={}, cyclic={:?}, bootstrap={:?}, seed={:?}",
+         write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?}, 
+            verbose={}, tolerance={}, iterations={}, temperature={},
+            cyclic={:?}, bootstrap={:?}, seed={:?}",
             self.metadata_file, self.hist_min, self.hist_max, self.num_bins,
             self.verbose, self.tolerance, self.max_iterations, self.temperature,
             self.cyclic, self.bootstrap, self.bootstrap_seed)
@@ -56,25 +58,34 @@ impl fmt::Display for Config {
 // converged if the maximal difference for the calculated bias offsets is
 // smaller then a tolerance value.
 fn is_converged(old_F: &[f64], new_F: &[f64], tolerance: f64) -> bool {
-	!new_F.iter().zip(old_F.iter())
-            .map(|x| { (x.0-x.1).abs() })
-            .any(|diff| { diff > tolerance })
+    // calculates abs diff between every old and new F and checks if any
+    // is larger than tolerance 
+	!new_F.iter()
+        .zip(old_F.iter())
+        .map(|x| { (x.0-x.1).abs() })
+        .any(|diff| { diff > tolerance })
 }
 
-// estimate the probability of a bin of the histogram set based on given bias offsets (F)
-// This evaluates the first WHAM equation for each bin.
+// estimate the probability of a bin of the histogram set based on given bias
+// offsets (F). This evaluates the first WHAM equation for each bin:
+// P(x) = \frac {\sum_{i=1}^N{n_i(x)}}
+//              {\sum_{i=1}^N{  N_i exp(\beta [F_i - U_{bias,i}(x)])}}
 fn calc_bin_probability(bin: usize, dataset: &Dataset, F: &[f64]) -> f64 {
 	let mut denom_sum: f64 = 0.0;
 	let bin_count: f64 = dataset.get_weighted_bin_count(bin);
     for (window, h) in dataset.histograms.iter().enumerate() {
 		let bias = dataset.get_bias(bin, window);
-        denom_sum += (dataset.weights[window] * h.num_points as f64) * bias * F[window];
+        denom_sum += (dataset.weights[window] * h.num_points as f64)
+                    * bias * F[window];
 	}
     bin_count / denom_sum
 }
 
 // estimate the bias offset F of the histogram based on given probabilities.
-// This evaluates the second WHAM equation for each window and returns exp(F/kT)
+// This evaluates the second WHAM equation for each window and returns exp(F/kT).
+// exp(F/kT) is not required in intermediate steps so we save some time by not
+// calculating it for every iteration. 
+// F_i = - 1/\beta ln[\sum_{X_{bins}}{P(x)exp(-\beta U_{bias,i}(x))}]
 fn calc_window_F(window: usize, dataset: &Dataset, P: &[f64]) -> f64 {
     let f: f64 = (0..dataset.num_bins).zip(P.iter()) // zip bins and P
         .map(|bin_and_prob: (usize, &f64)| {
@@ -84,16 +95,18 @@ fn calc_window_F(window: usize, dataset: &Dataset, P: &[f64]) -> f64 {
     1.0/f
 }
 
-// One full WHAM iteration includes calculation of new probabilities P and
-// new bias offsets F based on previous bias offsets F_prev. This updates
-// the values in vectors F and P
+// One full WHAM iteration: calculation of new probabilities P and new bias
+// offsets F based on previous bias offsets F_prev. This updates the values in
+// vectors F and P.
 fn perform_wham_iteration(dataset: &Dataset, F_prev: &[f64], F: &mut Vec<f64>, P: &mut Vec<f64>) {
-	// evaluate first WHAM equation for each bin to
-	// estimage probabilities based on previous offsets (F_prev))
-	(0..dataset.num_bins).into_par_iter()
+	// Update P
+    // evaluate first WHAM equation for each bin to
+	// estimate probabilities based on previous offsets (F_prev))
+    (0..dataset.num_bins).into_par_iter()
 		.map(|bin| { calc_bin_probability(bin, dataset, F_prev) })
 		.collect_into_vec(P);
 
+    // Update F
 	// evaluate second WHAM equation for each window to
 	// estimate new bias offsets from propabilities
 	(0..dataset.num_windows).into_par_iter()
@@ -101,12 +114,20 @@ fn perform_wham_iteration(dataset: &Dataset, F_prev: &[f64], F: &mut Vec<f64>, P
 		.collect_into_vec(F);
 }
 
-pub fn perform_wham(cfg: &Config, dataset: &Dataset) -> Result<(Vec<f64>, Vec<f64>, Vec<f64>)> {
+// Full WHAM calculation. Calls `perform_wham_iteration` until convergence
+// criteria are met or max iterations reached.
+pub fn perform_wham(cfg: &Config, dataset: &Dataset)
+        -> Result<(Vec<f64>, Vec<f64>, Vec<f64>)> {
 	// allocate required vectors.
-    let mut P: Vec<f64> = vec![f64::NAN; dataset.num_bins]; // bin probability
-    let mut F: Vec<f64> = vec![1.0; dataset.num_windows]; // bias offset exp(F/kT)
-    let mut F_prev: Vec<f64> = vec![f64::NAN; dataset.num_windows]; // previous bias offset
-    let mut F_tmp: Vec<f64> = vec![f64::NAN; dataset.num_windows]; // temp storage for F
+
+    // bin probability
+    let mut P: Vec<f64> = vec![f64::NAN; dataset.num_bins];
+    // bias offset exp(F/kT)
+    let mut F: Vec<f64> = vec![1.0; dataset.num_windows];
+    // previous bias offset
+    let mut F_prev: Vec<f64> = vec![f64::NAN; dataset.num_windows];
+    // temp storage for F
+    let mut F_tmp: Vec<f64> = vec![f64::NAN; dataset.num_windows];
 
     let mut iteration = 0;
     let mut converged = false;
@@ -118,14 +139,15 @@ pub fn perform_wham(cfg: &Config, dataset: &Dataset) -> Result<(Vec<f64>, Vec<f6
         // store F values before the next iteration
         F_prev.copy_from_slice(&F);
 
-        // perform wham iteration (this updates F and P)
+        // perform wham iteration (this updates F and P).
         perform_wham_iteration(&dataset, &F_prev, &mut F, &mut P);
 
         // convergence check
         if iteration % 10 == 0 {
-            // This backups exp(F/kT) in a temporary vector and calculates true F and F_prev for
-            // convergence. Finally, F is restored. F_prev does not need to be restored because
-            // its overwritten for the next iteration.
+            // This backups exp(F/kT) in a temporary vector and calculates
+            // true F and F_prev for convergence. Finally, F is restored.
+            // F_prev does not need to be restored because its overwritten
+            // for the next iteration.
             F_tmp.copy_from_slice(&F);
             for f in F.iter_mut() { *f = -dataset.kT * f.ln() }
             for f in F_prev.iter_mut() { *f = -dataset.kT * f.ln() }
@@ -134,17 +156,13 @@ pub fn perform_wham(cfg: &Config, dataset: &Dataset) -> Result<(Vec<f64>, Vec<f6
             println!("Iteration {}: dF={}", &iteration, &diff_avg(&F_prev, &F));
             F.copy_from_slice(&F_tmp);
         }
-
-        // Dump free energy and bias offsets
-        //if iteration % 100 == 0 {
-        //   free_energy(&histograms, &mut P, &mut A);
-        //    dump_state(&histograms, &F, &F_prev, &P, &A);
-        //}
     }
 
     // Normalize P to sum(P) = 1.0
     let P_sum: f64 = P.iter().sum();
-    P.iter_mut().map(|p| *p /= P_sum).count();
+    for p in P.iter_mut() {
+        *p /= P_sum; 
+    }
 
     if iteration == cfg.max_iterations {
 		bail!("WHAM not converged! (max iterations reached)");
@@ -214,19 +232,23 @@ fn calc_free_energy(dataset: &Dataset, P: &[f64]) -> Vec<f64> {
     free_energy
 }
 
-fn dump_state(dataset: &Dataset, F: &[f64], F_prev: &[f64], P: &[f64], P_std: &[f64], A: &[f64], A_std: &[f64]) {
+// Print the current WHAM iteration state. Dumps the PMF and associated vectors 
+fn dump_state(dataset: &Dataset, F: &[f64], F_prev: &[f64], P: &[f64],
+    P_std: &[f64], A: &[f64], A_std: &[f64]) {
 	// TODO fix output of F/F_prev
 	let out = std::io::stdout();
     let mut lock = out.lock();
-	writeln!(lock, "# PMF");
-	writeln!(lock, "#bin\t\tFree Energy\t\t+/-\t\tP(x)\t\t+/-");
+	writeln!(lock, "# PMF").unwrap();
+	writeln!(lock, "#bin\t\tFree Energy\t\t+/-\t\tP(x)\t\t+/-").unwrap();
 	for bin in 0..dataset.num_bins {
-		writeln!(lock, "{:9.5}\t{:9.5}\t{:9.5}\t{:9.5}\t{:9.5}", bin, A[bin], A_std[bin], P[bin], P_std[bin]);
+		writeln!(lock, "{:9.5}\t{:9.5}\t{:9.5}\t{:9.5}\t{:9.5}",
+            bin, A[bin], A_std[bin], P[bin], P_std[bin]).unwrap();
 	}
-	writeln!(lock, "# Bias offsets");
-	writeln!(lock, "#Window\t\tF\t\tF_prev");
+	writeln!(lock, "# Bias offsets").unwrap();
+	writeln!(lock, "#Window\t\tF\t\tF_prev").unwrap();
 	for window in 0..dataset.num_windows {
-		writeln!(lock, "{}\t{:9.5}\t{:8.8}", window, F[window], (F[window]-F_prev[window]).abs());
+		writeln!(lock, "{}\t{:9.5}\t{:8.8}",
+            window, F[window], (F[window]-F_prev[window]).abs()).unwrap();
 	}
 }
 
@@ -268,11 +290,11 @@ mod tests {
 	fn calc_bin_probability() {
 		let dataset = create_test_dataset();
 		let F = vec![1.0; dataset.num_bins]  ;
-        let expected = vec!(0.0, 0.0825296687031316, 40.92355847097493,
-                            124226.70003377, 2308526035.5283747);
+        let expected = vec!(0.0, 0.082_529_668_703_131_6, 40.923_558_470_974_93,
+                            124_226.700_033_77, 2_308_526_035.528_374_7);
 		for b in 0..dataset.num_bins {
 			let p = super::calc_bin_probability(b, &dataset, &F);
-			assert_delta!(expected[b], p, 0.0000001);
+			assert_delta!(expected[b], p, 0.000_000_1);
 		}
 	}
 
@@ -280,10 +302,10 @@ mod tests {
 	fn calc_bias_offset() {
 		let dataset = create_test_dataset();
 		let probability = vec!(0.0, 0.1, 0.2, 0.3, 0.4);
-        let expected = vec!(15.927477169990633, 15.927477169990633);
+        let expected = vec!(15.927_477_169_990_633, 15.927_477_169_990_633);
 		for window in 0..dataset.num_windows {
 			let F = super::calc_window_F(window, &dataset, &probability);
-            assert_delta!(expected[window], F, 0.0000001);
+            assert_delta!(expected[window], F, 0.000_000_1);
         }
 	}
 
@@ -295,8 +317,8 @@ mod tests {
 		let mut P =  vec![f64::NAN; dataset.num_bins];
 		super::perform_wham_iteration(&dataset, &prev_F, &mut F, &mut P);
         let expected_F = vec!(1.0, 1.0);
-		let expected_P = vec!(0.0, 0.0825296687031316, 40.92355847097493,
-                            124226.70003377, 2308526035.5283747);
+		let expected_P = vec!(0.0, 0.082_529_668_703_131_6, 40.923_558_470_974_93,
+                            124_226.700_033_77, 2_308_526_035.528_374_7);
 		for bin in 0..dataset.num_bins {
 			assert_delta!(expected_P[bin], P[bin], 0.01)
 		}
