@@ -239,10 +239,10 @@ mod tests {
 	fn get_x_for_bin() {
 		let ds = build_hist_set();
 		let expected: Vec<f64> = vec![0,1,2,3,4,5,6,7,8].iter()
-				.map(|x| *x as f64 + 0.5).collect(); 
-		for i in 0..9 {
-			assert_eq!(expected[i], ds.get_coords_for_bin(i)[0]);
-		}
+				.map(|x| *x as f64 + 0.5).collect();
+        expected.iter().enumerate().for_each(|(i, exp)| {
+            assert_approx_eq!(exp, &ds.get_coords_for_bin(i)[0]);
+        })
 	}
 
 	#[test]

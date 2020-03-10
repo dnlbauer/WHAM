@@ -35,7 +35,7 @@ pub fn read_data(cfg: &Config) -> Result<Dataset> {
     let bin_width: Vec<f64> = (0..cfg.dimens).map(|idx| {
             (cfg.hist_max[idx] - cfg.hist_min[idx])/(cfg.num_bins[idx] as f64)
         }).collect();
-    let num_bins = cfg.num_bins.iter().fold(1, |state, &bins| state*bins);
+    let num_bins = cfg.num_bins.iter().product();
     let dimens_length = cfg.num_bins.clone();
 
     let f = File::open(&cfg.metadata_file).chain_err(|| "Failed to open metadata file")?;
@@ -118,7 +118,7 @@ fn is_in_time_boundaries(time: f64, cfg: &Config) -> bool {
     false
 }
 
-// parse a timeseries file into a histogram
+// parse a time series file into a histogram
 fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
 	let f = File::open(window_file)
         .chain_err(|| format!("Failed to open sample data file {}.", window_file))?;
@@ -139,7 +139,7 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
     while buf.read_line(&mut line).chain_err(|| "Failed to read line")? > 0 {
         linecount += 1;
         // skip comments and empty lines
-        if line.starts_with("#") || line.starts_with("@") || line.len() == 0 {
+        if line.starts_with('#') || line.starts_with('@') || line.is_empty() {
             line.clear();
             continue;
         }
@@ -182,14 +182,14 @@ pub fn write_results(out_file: &str, ds: &Dataset, free: &[f64],
 
     let header: String = (0..ds.dimens_lengths.len()).map(|d| format!("coord{}", d+1))
         .collect::<Vec<String>>().join("    ");
-    writeln!(buf, "#{}    {}    {}    {}    {}",
-        header, "Free Energy", "+/-", "Probability", "+/-").unwrap();
+    writeln!(buf, "#{}    Free Energy    +/-    Probability    +/-", header).unwrap();
 
     for bin in 0..free.len() {
         let coords = ds.get_coords_for_bin(bin);
         let coords_str: String = coords.iter().map(|c| {format!("{:8.6}    ", c)})
             .collect::<Vec<String>>().join("\t");
-        writeln!(buf, "{}{:8.6}    {:8.6}    {:8.6}    {:8.6}", coords_str, free[bin], free_std[bin], prob[bin], prob_std[bin])
+        writeln!(buf, "{}{:8.6}    {:8.6}    {:8.6}    {:8.6}", coords_str,
+            free[bin], free_std[bin], prob[bin], prob_std[bin])
             .chain_err(|| "Failed to write to file.")?;
     }
     Ok(())
@@ -198,6 +198,7 @@ pub fn write_results(out_file: &str, ds: &Dataset, free: &[f64],
 #[cfg(test)]
 mod tests {
     use super::*;
+    use assert_approx_eq::assert_approx_eq;
 
     fn cfg() -> Config {
         Config {
@@ -227,12 +228,12 @@ mod tests {
         let h = super::read_window_file(&f, &cfg).unwrap();
         println!("{:?}", h);
         assert_eq!(5000, h.num_points);
-        assert_eq!(0.0, h.bins[2]);
-        assert_eq!(11.0, h.bins[3]);
-        assert_eq!(2236.0, h.bins[4]);
-        assert_eq!(2714.0, h.bins[5]);
-        assert_eq!(39.0, h.bins[6]);
-        assert_eq!(0.0, h.bins[7]);
+        assert_approx_eq!(0.0, h.bins[2]);
+        assert_approx_eq!(11.0, h.bins[3]);
+        assert_approx_eq!(2236.0, h.bins[4]);
+        assert_approx_eq!(2714.0, h.bins[5]);
+        assert_approx_eq!(39.0, h.bins[6]);
+        assert_approx_eq!(0.0, h.bins[7]);
     }
 
 
@@ -244,7 +245,7 @@ mod tests {
         assert_eq!(25, ds.num_windows);
         assert_eq!(cfg.num_bins.len(), ds.dimens_lengths.len());
         assert_eq!(cfg.num_bins[0], ds.dimens_lengths[0]);
-        assert_eq!(cfg.temperature * k_B, ds.kT);
+        assert_approx_eq!(cfg.temperature * k_B, ds.kT);
         assert_eq!(25, ds.histograms.len())
     }
 

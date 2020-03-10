@@ -5,6 +5,10 @@ extern crate error_chain;
 extern crate rand;
 extern crate rgsl;
 extern crate rayon;
+#[cfg(test)]
+#[macro_use]
+extern crate assert_approx_eq;
+
 
 pub mod io;
 pub mod histogram;
@@ -21,7 +25,7 @@ pub mod errors { error_chain!{} }
 use errors::*;
 
 #[allow(non_upper_case_globals)]
-static k_B: f64 = 0.0083144621; // kJ/mol*K
+static k_B: f64 = 0.008_314_462_1; // kJ/mol*K
 
 // Application config
 #[derive(Debug)]
@@ -180,16 +184,11 @@ pub fn run(cfg: &Config) -> Result<()>{
 
     let (P, F, F_prev) = perform_wham(&cfg, &dataset)?;
 
-	let P_std: Vec<f64>;
-	let free_energy_std: Vec<f64>;
-	if cfg.bootstrap > 0 {
-		let error_est = error_analysis::run_bootstrap(&cfg, dataset.clone(), &P, cfg.bootstrap);
-		P_std = error_est.0;
-		free_energy_std = error_est.1;
+	let (P_std, free_energy_std) = if cfg.bootstrap > 0 {
+		error_analysis::run_bootstrap(&cfg, dataset.clone(), &P, cfg.bootstrap)
 	} else {
-		P_std = vec![0.0; P.len()];
-		free_energy_std = vec![0.0; P.len()];
-	}
+		(vec![0.0; P.len()], vec![0.0; P.len()])
+	};
 
     // calculate free energy and dump state
     println!("Finished. Dumping final PMF");
@@ -292,21 +291,21 @@ mod tests {
 		let F = vec![1.0; dataset.num_bins]  ;
         let expected = vec!(0.0, 0.082_529_668_703_131_6, 40.923_558_470_974_93,
                             124_226.700_033_77, 2_308_526_035.528_374_7);
-		for b in 0..dataset.num_bins {
-			let p = super::calc_bin_probability(b, &dataset, &F);
-			assert_delta!(expected[b], p, 0.000_000_1);
-		}
-	}
+        expected.iter().enumerate().for_each(|(i, exp)| {
+			let p = super::calc_bin_probability(i, &dataset, &F);
+			assert_delta!(exp, p, 0.000_000_1);
+        })
+    }
 
     #[test]
 	fn calc_bias_offset() {
 		let dataset = create_test_dataset();
 		let probability = vec!(0.0, 0.1, 0.2, 0.3, 0.4);
         let expected = vec!(15.927_477_169_990_633, 15.927_477_169_990_633);
-		for window in 0..dataset.num_windows {
-			let F = super::calc_window_F(window, &dataset, &probability);
-            assert_delta!(expected[window], F, 0.000_000_1);
-        }
+        expected.iter().enumerate().for_each(|(i, exp)| {
+            let F = super::calc_window_F(i, &dataset, &probability);
+            assert_delta!(exp, F, 0.000_000_1);
+        })
 	}
 
 	#[test]
