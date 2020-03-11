@@ -157,7 +157,9 @@ pub fn perform_wham(cfg: &Config, dataset: &Dataset)
             for f in F_prev.iter_mut() { *f = -dataset.kT * f.ln() }
             converged = is_converged(&F_prev, &F, cfg.tolerance);
 
-            println!("Iteration {}: dF={}", &iteration, &diff_avg(&F_prev, &F));
+            if cfg.verbose {
+                println!("Iteration {}: dF={}", &iteration, &diff_avg(&F_prev, &F));
+            }
             F.copy_from_slice(&F_tmp);
         }
     }
@@ -183,8 +185,10 @@ pub fn run(cfg: &Config) -> Result<()>{
     println!("{}", &dataset);
 
     let (P, F, F_prev) = perform_wham(&cfg, &dataset)?;
+    println!("WHAM converged.");
 
 	let (P_std, free_energy_std) = if cfg.bootstrap > 0 {
+        println!("Bootstrapping..");      
 		error_analysis::run_bootstrap(&cfg, dataset.clone(), &P, cfg.bootstrap)
 	} else {
 		(vec![0.0; P.len()], vec![0.0; P.len()])
