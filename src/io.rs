@@ -67,13 +67,13 @@ pub fn read_data(cfg: &Config) -> Result<Dataset> {
                          histograms.last().unwrap().num_points), cfg.verbose);
 
         // parse bias force constants and positions
-        for i in 1..cfg.dimens+1 {
-            let pos = split[i].parse()
+        for val in split.iter().skip(1).take(cfg.dimens) {
+            let pos = val.parse()
                 .chain_err(|| format!("Failed to read bias position in line {} of metadata file", line_num+1))?;
             bias_pos.push(pos);
         }
-        for i in (1+cfg.dimens)..(1+2*cfg.dimens) {
-            let fc = split[i].parse()
+        for val in split.iter().skip(1+cfg.dimens).take(cfg.dimens) {
+            let fc = val.parse()
                 .chain_err(|| format!("Failed to read bias fc in line {} of metadata file", line_num+1))?;
             bias_fc.push(fc);
         }
@@ -91,13 +91,10 @@ pub fn read_data(cfg: &Config) -> Result<Dataset> {
 // lengths: length of the matrix in each dimension
 // returns an index if the matrix is flattened to a one dimensional vector
 // example for 3 dimensions N,M,O: idx = i_O + l_O*l_M*i_M + l_O*l_M*l_N*i_N
-fn flat_index(indeces: &Vec<usize>, lengths: &Vec<usize>) -> usize {
-    let mut idx = 0;
-    for i in 0..indeces.len() {
-        idx += indeces[i]*lengths[0..i].iter()
-            .fold(1, |state, &l| { state * l });
-    }
-    idx
+fn flat_index(indeces: &[usize], lengths: &[usize]) -> usize {
+    indeces.iter().enumerate().map(|(i, idx)| {
+        idx * lengths.iter().take(i).product::<usize>()
+    }).sum()
 }
 
 // returns true if the values are inside the histogram boundaries defined by cfg
@@ -125,7 +122,7 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
     let mut buf = BufReader::new(&f);
 
     // total number of bins is the product of all dimensions length
-    let total_bins = cfg.num_bins.iter().fold(1, |s, &x| { s*x });
+    let total_bins = cfg.num_bins.iter().product();
     let mut hist = vec![0.0; total_bins];
 
     // bin width for each dimension: (max-min)/bins
@@ -158,7 +155,7 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
             }
 
             if is_in_hist_boundaries(&values[1..], cfg) && is_in_time_boundaries(values[0], cfg) {
-                let bin_indeces = (0..cfg.dimens).map(|dimen: usize| {
+                let bin_indeces: Vec<usize> = (0..cfg.dimens).map(|dimen: usize| {
                     let val = values[dimen+1];
                     ((val - cfg.hist_min[dimen]) / bin_width[dimen]) as usize
                 }).collect();

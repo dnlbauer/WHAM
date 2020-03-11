@@ -107,7 +107,7 @@ impl Dataset {
     	let mut tmp = bin;
     	let mut idx = vec![0; lengths.len()];
     	for dimen in (1..lengths.len()).rev() {
-        	let denom = lengths.iter().take(dimen).fold(1, |s,&x| s*x);
+        	let denom: usize = lengths.iter().take(dimen).product();
 			idx[dimen] = tmp / denom;
         	tmp %= denom;
     	}
