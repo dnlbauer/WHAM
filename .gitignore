@@ -2,3 +2,4 @@ target
 reference
 .idea
 *bench.*
+*.sublime*
