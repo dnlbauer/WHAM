@@ -32,7 +32,7 @@ fn generate_random_weighted_dataset(ds: Dataset, rng: &mut StdRng) -> Dataset {
 // Perform bootstrap error analysis. This runs the WHAM analysis num_runs times on random weighted
 // datasets. The standard deviation is calculated on the bootstrapped probabilities of each bin. The
 // standard deviation of the free eneergy is then deduced by error propagation (A_std = kT*1/P*P_std)
-pub fn run_bootstrap(cfg: &Config, ds: Dataset, P: &[f64], num_runs: usize) -> (Vec<f64>,Vec<f64>) {
+pub fn run_bootstrap(cfg: &Config, ds: Dataset, num_runs: usize) -> (Vec<f64>,Vec<f64>) {
     // seed the rng
     let mut rng: StdRng = SeedableRng::seed_from_u64(cfg.bootstrap_seed);
 

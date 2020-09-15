@@ -189,7 +189,7 @@ pub fn run(cfg: &Config) -> Result<()>{
 
 	let (P_std, free_energy_std) = if cfg.bootstrap > 0 {
         println!("Bootstrapping..");      
-		error_analysis::run_bootstrap(&cfg, dataset.clone(), &P, cfg.bootstrap)
+		error_analysis::run_bootstrap(&cfg, dataset.clone(), cfg.bootstrap)
 	} else {
 		(vec![0.0; P.len()], vec![0.0; P.len()])
 	};
