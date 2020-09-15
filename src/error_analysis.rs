@@ -1,7 +1,7 @@
 use rand::{SeedableRng, StdRng, Rng};
 use super::histogram::{Dataset};
 use super::perform_wham;
-use super::Config;
+use super::{Config,calc_free_energy};
 use rgsl::statistics;
 
 // returns a set of num_windows continious weights by
@@ -51,8 +51,18 @@ pub fn run_bootstrap(cfg: &Config, ds: Dataset, P: &[f64], num_runs: usize) -> (
         P_se[bin] = statistics::sd(&Ps, 1, num_runs)/(num_runs as f64).sqrt();
     }
 
-    // SE of A by error propagation
-    let A_se = P_se.iter().zip(P.iter()).map(|(se,P)| ds.kT*1.0/P*se).collect();
+    // SE of A
+    let bootstrapped_As: Vec<Vec<f64>> = (0..num_runs).map(|x| {
+        let run_Ps = &bootstrapped_Ps[x];
+        calc_free_energy(&ds, run_Ps)
+    }).collect();
+    
+    let mut A_se = vec![0.0; ds.num_bins];
+    for bin in 0..ds.num_bins {
+        let As = bootstrapped_As.iter().map(|window| window[bin]).collect::<Vec<f64>>();
+        A_se[bin] = statistics::sd(&As, 1, num_runs)/(num_runs as f64).sqrt();
+    }
+
     (P_se, A_se)
 }
 

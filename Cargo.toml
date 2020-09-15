@@ -1,6 +1,6 @@
 [package]
 name = "wham"
-version = "0.9.7"
+version = "0.9.8"
 authors = ["Daniel Bauer <bauer@cbs.tu-darmstadt.de>"]
 description = "An implementation of the weighted histogram analysis method"
 license = "GPL-3.0"
