@@ -43,16 +43,17 @@ pub fn run_bootstrap(cfg: &Config, ds: Dataset, P: &[f64], num_runs: usize) -> (
         perform_wham(cfg, &rnd_weighted_dataset).unwrap().0
     }).collect();
 
-    // Evaulate standard deviation of P per bin
-    let mut P_std = vec![0.0; ds.num_bins];
+    // Standard error (SE) of P per bin
+    // SE = SD/sqrt(n)
+    let mut P_se = vec![0.0; ds.num_bins];
     for bin in 0..ds.num_bins {
         let Ps = bootstrapped_Ps.iter().map(|window| window[bin]).collect::<Vec<f64>>();
-        P_std[bin] = statistics::sd(&Ps, 1, num_runs);
+        P_se[bin] = statistics::sd(&Ps, 1, num_runs)/(num_runs as f64).sqrt();
     }
 
-    // A_std by error propagation
-    let A_std = P_std.iter().zip(P.iter()).map(|(std,P)| ds.kT*1.0/P*std).collect();
-    (P_std, A_std)
+    // SE of A by error propagation
+    let A_se = P_se.iter().zip(P.iter()).map(|(se,P)| ds.kT*1.0/P*se).collect();
+    (P_se, A_se)
 }
 
 #[cfg(tests)]

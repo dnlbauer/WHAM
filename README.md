@@ -81,8 +81,8 @@ one can estimate the error as standard deviation between the N bootstrapping run
 Autocorrelation Estimates, JCTC, 6(12), 3713-3720*.
 
 To perform bayesian bootstrapping in WHAM, use the ```-bt <RUNS>``` flag to perform <RUNS> individual bootstrapping
-runs. The error estimates of bin probabilities and free energy will be given as separate column (+/-) in the output file.
-If no error analysis is performed, these columns are set to 0.0.
+runs. The error estimates of bin probabilities and free energy will be given as standard error (SE) in a 
+separate column (+/-) in the output file. If no error analysis is performed, these columns are set to 0.0.
 
 Examples
 ---
