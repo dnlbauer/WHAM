@@ -94,7 +94,6 @@ The example folder contains input and output files for two simple test systems:
 
 TODO
 ---
-- better error estimation
 - Autocorrelation
 - Replica exchange
 
