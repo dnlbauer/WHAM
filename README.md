@@ -38,6 +38,56 @@ Usage
 wham has a convenient command line interface. You can see all options with
 ```wham -h```:
 
+```
+wham 0.9.9
+D. Bauer <bauer@bio.tu-darmstadt.de>
+wham is a fast implementation of the weighted histogram analysis method (WHAM) written in Rust. It currently supports
+potential of mean force (PMF) calculations in multiple dimensions at constant temperature.
+
+Metadata file format:
+    /path/to/timeseries_file1  x_1  x_2  x_N  fc_1  fc_2  fc_N
+    /path/to/timeseries_file2  x_1  x_2  x_N  fc_1  fc_2  fc_N
+    /path/to/timeseries_file3  x_1  x_2  x_N  fc_1  fc_2  fc_N
+The first column is a path to a timeseries file _relative_ to the metadata file (see below). This is followed by the
+position of the umbrella potential x in N dimensions and the force constant fc in each dimension. Lines starting with a
+# are treated as comments and will not be parsed.
+
+Timeseries file format:
+    time  x_1  x_2  x_N
+    time  x_1  x_2  x_N
+    time  x_1  x_2  x_N
+The first column will be ignored and is followed by N reaction coordinates x.
+
+Shipped under the GPLv3 license.
+
+USAGE:
+    wham [FLAGS] [OPTIONS] --bins <BINS> --max <HIST_MAX> --file <METADATA> --min <HIST_MIN> --temperature <temperature>
+
+FLAGS:
+    -c, --cyclic     For periodic reaction coordinates. If this is set, the first and last coordinate bin in each
+                     dimension are treated as neighbors for the bias calculation.
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+    -v, --verbose    Enables verbose output.
+
+OPTIONS:
+    -b, --bins <BINS>                  Number of histogram bins (comma separated).
+        --bt <bootstrap>               Number of bayesian bootstrapping runs for error analysis by assigning random
+                                       weights (defaults to 0).
+        --seed <bootstrap_seed>        Random seed for bootstrapping runs.
+        --end <end>                    Skip rows in timeseries with an index larger than this value (defaults to 1e+20)
+    -i, --iterations <ITERATIONS>      Stop WHAM after this many iterations without convergence (defaults to 100,000).
+        --max <HIST_MAX>               Histogram maxima (comma separated). Also accepts "pi".
+    -f, --file <METADATA>              Path to the metadata file.
+        --min <HIST_MIN>               Histogram minima (comma separated for multiple dimensions). Also accepts "pi".
+    -o, --output <output>              Free energy output file (defaults to wham.out).
+        --start <start>                Skip rows in timeseries with an index smaller than this value (defaults to 0)
+    -T, --temperature <temperature>    WHAM temperature in Kelvin.
+    -t, --tolerance <TOLERANCE>        Abortion criteria for WHAM calculation. WHAM stops if abs(F_new - F_old) <
+                                       tolerance (defaults to 0.000001).
+
+```
+
 To run the two dimensional example (simulation of dialanine phi and psi angle):
 ```bash
 wham --max 3.14,3.14 --min -3.14,-3.14 -T 300 --bins 100,100 --cyclic -f example/2d/metadata.dat       
