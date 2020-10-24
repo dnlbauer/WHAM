@@ -1,4 +1,4 @@
-use rand::{SeedableRng, StdRng, Rng};
+use rand::prelude::*;
 use super::histogram::{Dataset};
 use super::perform_wham;
 use super::{Config,calc_free_energy};

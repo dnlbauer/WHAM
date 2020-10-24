@@ -3,6 +3,7 @@ extern crate wham;
 extern crate clap;
 extern crate rand;
 
+use rand::prelude::*;
 use clap::App;
 use wham::Config;
 use wham::errors::*;
@@ -49,7 +50,6 @@ fn cli() -> Result<Config> {
 		.chain_err(|| "Cannot parse bootstrap iteration.")?;
     let bootstrap_seed: u64 = matches.value_of("bootstrap_seed")
         .unwrap_or({
-            use rand::Rng;
             let mut rng = rand::thread_rng();
             &rng.gen::<u32>().to_string()
         }).parse()
