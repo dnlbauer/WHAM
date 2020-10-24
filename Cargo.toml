@@ -5,6 +5,9 @@ authors = ["Daniel Bauer <bauer@cbs.tu-darmstadt.de>"]
 description = "An implementation of the weighted histogram analysis method"
 license = "GPL-3.0"
 repository = "https://github.com/danijoo/WHAM"
+readme = "README.md"
+categories = ["science", "command-line-utilities", "molecular-dynamics", "algorithms"]
+keywords = ["math", "statistics", "histogram", "bioinformatics", "molecular-dynamics"]
 
 [dependencies]
 clap = {version="2.32.0", features=['yaml']}
