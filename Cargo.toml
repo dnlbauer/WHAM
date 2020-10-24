@@ -6,7 +6,7 @@ description = "An implementation of the weighted histogram analysis method"
 license = "GPL-3.0"
 repository = "https://github.com/danijoo/WHAM"
 readme = "README.md"
-categories = ["science", "command-line-utilities", "molecular-dynamics", "algorithms"]
+categories = ["science", "command-line-utilities", "algorithms"]
 keywords = ["math", "statistics", "histogram", "bioinformatics", "molecular-dynamics"]
 
 [dependencies]
