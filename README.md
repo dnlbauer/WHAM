@@ -62,7 +62,7 @@ The first column will be ignored and is followed by N reaction coordinates x.
 Shipped under the GPLv3 license.
 
 USAGE:
-    wham [FLAGS] [OPTIONS] --bins <BINS> --max <HIST_MAX> --file <METADATA> --min <HIST_MIN> --temperature <temperature>
+   wham [FLAGS] [OPTIONS] --bins <BINS> --max <HIST_MAX> --file <METADATA> --min <HIST_MIN> --temperature <temperature>
 
 FLAGS:
     -c, --cyclic     For periodic reaction coordinates. If this is set, the first and last coordinate bin in each
@@ -90,7 +90,16 @@ OPTIONS:
                                        tolerance (defaults to 0.000001).
 ```
 
-To run the two dimensional example (simulation of dialanine phi and psi angle):
+Examples
+---
+The example folder contains input and output files for two simple test systems:
+
+- 1d_cyclic: Phi torsion angle of dialanine in vaccum
+- 2d_cyclic: Phi and psi torsion angles of the same system
+
+The command below will run the two dimensional example (simulation of dialanine phi and psi angle) and calculate the free energy based on the two collective variables
+in the range of -3.14 to 3.14, with 100 bins in each dimension and periodic collective variables:
+ 
 ```bash
 wham --max 3.14,3.14 --min -3.14,-3.14 -T 300 --bins 100,100 --cyclic -f example/2d/metadata.dat       
 > Supplied WHAM options: Metadata=example/2d/metadata.dat, hist_min=[-3.14, -3.14], hist_max=[3.14, 3.14], bins=[100, 100] verbose=false, tolerance=0.000001, iterations=100000, temperature=300, cyclic=true
@@ -106,7 +115,6 @@ wham --max 3.14,3.14 --min -3.14,-3.14 -T 300 --bins 100,100 --cyclic -f example
 
 ```
 After convergence, final bias offsets (F) and the free energy will be dumped to stdout and the output file is written.
-
 
 The output file contains the free energy and probability for each bin. Probabilities are normalized to sum to P=1.0 and
 the smallest free energy is set to 0 (with other free energies based on that).
@@ -127,7 +135,7 @@ the smallest free energy is set to 0 (with other free energies based on that).
 Error analysis
 ---
 WHAM can perform error analysis using the bayesian bootstrapping method. Every simulation window is assumed to be an
-individual set of data point. By calculating probabilities N times with randomly assigned weights for each window,
+individual set of data points. By calculating probabilities N times with randomly assigned weights for each window,
 one can estimate the error as standard deviation between the N bootstrapping runs. For more details see
 *Van der Spoel, D. et al. (2010). g_wham—A Free Weighted Histogram Analysis Implementation Including Robust Error and
 Autocorrelation Estimates, JCTC, 6(12), 3713-3720*.
@@ -148,14 +156,6 @@ timeseries is used for unbiasing. A more detailed description of the method can 
 tempering simulations, JCTC 3(1):26-41*
 
 
-Examples
----
-The example folder contains input and output files for two simple test systems:
-
-- 1d_cyclic: Phi torsion angle of dialanine in vaccum
-- 2d_cyclic: Phi and psi torsion angles of the same system
-
-
 TODO
 ---
 - Replica exchange
@@ -165,7 +165,7 @@ License & Citing
 WHAM is licensed under the GPL-3.0 license. Please read the LICENSE file in this
 repository for more information.
 
-There's no publication for this WHAM implementation. However, there is a citeabe DOI. If you use this software for your work, please consider citing it: *Bauer, D, WHAM - An efficient weighted histogram analysis implementation written in Rust, Zenodo.  https://doi.org/10.5281/zenodo.1488597*
+There's no publication for this WHAM implementation. However, there is a citeabe DOI. If you use this software for your work, please consider citing it: *Bauer, D., WHAM - An efficient weighted histogram analysis implementation written in Rust, Zenodo. https://doi.org/10.5281/zenodo.1488597*
 
 Parts of this work, especially some perfomance optimizations and the I/O format, are inspired by the
 implementation of A. Grossfield (*Grossfield, A, WHAM: the weighted histogram analysis method, http://membrane.urmc.rochester.edu/content/wham*).
