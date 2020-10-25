@@ -1,6 +1,7 @@
 use super::histogram::Dataset;
 use super::histogram::Histogram;
 use super::Config;
+use super::correlation_analysis::{statistical_ineff, autocorrelation_time};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader,BufWriter};
@@ -155,6 +156,38 @@ fn read_timeseries(window_file: &str, cfg: &Config) -> Result<Vec<Vec<f64>>> {
     Ok(timeseries)
 }
 
+// calculates the inefficiency for every collective variable
+// filters the timeseries based on the highest inefficiency
+fn uncorrelate(timeseries: Vec<Vec<f64>>, cfg: &Config) -> Vec<Vec<f64>> {
+    // calculate inefficiencies and find the highest one
+    let gs: Vec<f64> = timeseries[1..].iter().map(|ts| statistical_ineff(ts)).collect();
+    let mut max_g = 1.0;
+    for g in gs {
+        if g > max_g {
+            max_g = g;
+        }
+    }
+
+    // round g up
+    let mut trunc_g = max_g.trunc() as usize;
+    if (trunc_g as f64 - max_g).abs() > 0.000_000_000_1 {
+        trunc_g += 1;
+    }
+
+    // filter correlated samples from timeseries
+    let prev_len = timeseries[0].len();
+    let timeseries = timeseries.into_iter().map(|ts| {
+        ts.into_iter().step_by(trunc_g).collect::<Vec<f64>>()
+    }).collect::<Vec<Vec<f64>>>();
+
+    let new_len = timeseries[0].len();
+    if cfg.verbose {
+        let tau = autocorrelation_time(max_g)* (timeseries[0][1]-timeseries[0][0]);
+        vprintln(format!("{:?}/{:?} samples are uncorrelated. {:?} samples removed from timeseries (tau={:.5})", new_len, prev_len, prev_len-new_len, tau), true);
+    }
+    timeseries
+}
+
 // parse a time series file into a histogram
 fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
     // total number of bins is the product of all dimensions length
@@ -166,9 +199,11 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
             (cfg.hist_max[idx] - cfg.hist_min[idx])/(cfg.num_bins[idx] as f64)
         }).collect();
 
-    let timeseries: Vec<Vec<f64>> = read_timeseries(window_file, cfg)?;
+    let mut timeseries: Vec<Vec<f64>> = read_timeseries(window_file, cfg)?;
     
-    // TODO decorrelate
+    if cfg.uncorr {
+        timeseries = uncorrelate(timeseries, cfg);
+    }
 
     for i in 0..timeseries[0].len() {
         let mut values: Vec<f64> = vec![f64::NAN; cfg.dimens+1];

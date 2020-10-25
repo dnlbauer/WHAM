@@ -6,7 +6,7 @@ use rgsl::statistics;
 // the a multiple of g 
 // For details, see "Chodera et al. (2007). Use of a Weighted Histogram Analysis
 // Method for the Analysis of Simulated and Parallel Tempering Simulations, JCTC"
-fn statistical_ineff(timeseries: &[f64]) -> f64 {
+pub fn statistical_ineff(timeseries: &[f64]) -> f64 {
     let n = timeseries.len();
     let autocorr = autocorrelation(timeseries);
 
@@ -43,7 +43,7 @@ fn autocorrelation(timeseries: &[f64]) -> Vec<f64> {
 
 // The autocorrelation time of a timeseries can be deduced from the
 // `statistical_ineff` by (g-1)/2.0 
-fn autocorrelation_time(g: f64) -> f64 {
+pub fn autocorrelation_time(g: f64) -> f64 {
     (g - 1.0) / 2.0
 }
 

@@ -71,7 +71,6 @@ mod tests {
     use super::*;
     use super::super::k_B;
     use super::super::histogram::Histogram;
-    use rand::prelude::*;
 
     fn build_hist() -> Histogram {
 		Histogram::new(
