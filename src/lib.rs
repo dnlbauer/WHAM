@@ -13,6 +13,7 @@ extern crate assert_approx_eq;
 pub mod io;
 pub mod histogram;
 pub mod error_analysis;
+pub mod correlation_analysis;
 
 use histogram::Dataset;
 use std::f64;
