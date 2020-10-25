@@ -12,10 +12,10 @@ from umbrella sampling simulations. For more details on the method, I suggest *R
 Features
 ---
 - Fast, especially for small systems
-- Multithreaded
-- Multidimensional
+- Multithreaded (automatically runs on all available cores) 
+- Multidimensional (any number of collective variables are possible)
 - Autocorrelation to remove correlated samples
-- Error analysis
+- Error analysis via bootstrapping
 - Unit tested
 
 Installation
