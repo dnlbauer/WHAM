@@ -12,9 +12,10 @@ from umbrella sampling simulations. For more details on the method, I suggest *R
 Features
 ---
 - Fast, especially for small systems
-- Multithreaded
-- Multidimensional
-- Error analysis
+- Multithreaded (automatically runs on all available cores) 
+- Multidimensional (any number of collective variables are possible)
+- Autocorrelation to remove correlated samples
+- Error analysis via bootstrapping
 - Unit tested
 
 Installation
@@ -67,6 +68,8 @@ FLAGS:
     -c, --cyclic     For periodic reaction coordinates. If this is set, the first and last coordinate bin in each
                      dimension are treated as neighbors for the bias calculation.
     -h, --help       Prints help information
+    -g, --uncorr     Estimates statistical inefficiency of each timeseries via autocorrelation and removes correlated
+                     samples (default is off).
     -V, --version    Prints version information
     -v, --verbose    Enables verbose output.
 
@@ -85,7 +88,6 @@ OPTIONS:
     -T, --temperature <temperature>    WHAM temperature in Kelvin.
     -t, --tolerance <TOLERANCE>        Abortion criteria for WHAM calculation. WHAM stops if abs(F_new - F_old) <
                                        tolerance (defaults to 0.000001).
-
 ```
 
 To run the two dimensional example (simulation of dialanine phi and psi angle):
@@ -134,6 +136,18 @@ To perform bayesian bootstrapping in WHAM, use the ```-bt <RUNS>``` flag to perf
 runs. The error estimates of bin probabilities and free energy will be given as standard error (SE) in a 
 separate column (+/-) in the output file. If no error analysis is performed, these columns are set to 0.0.
 
+Autocorrelation analysis
+---
+With the ```--uncorr``` flag, WHAM calculates the autocorrelation time ```tau``` for all timeseries and all collective
+variables. Timeseries are then filtered based on their highest autocorrelation time to remove correlated samples from
+the dataset. This reduces the number of data points but can improve the accuracy of the result.
+
+For filtering, the statistical inefficiency `g` is calculated: ```g = 1 + 2*tau```, and only every `g`th element of the
+timeseries is used for unbiasing. A more detailed description of the method can be found in
+*Chodera, J.D. et al. (2007). Use of the weighted histogram analysis method for the analysis of simulated and parallel
+tempering simulations, JCTC 3(1):26-41*
+
+
 Examples
 ---
 The example folder contains input and output files for two simple test systems:
@@ -144,7 +158,6 @@ The example folder contains input and output files for two simple test systems:
 
 TODO
 ---
-- Autocorrelation
 - Replica exchange
 
 License & Citing

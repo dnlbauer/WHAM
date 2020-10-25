@@ -66,7 +66,7 @@ pub fn run_bootstrap(cfg: &Config, ds: Dataset, num_runs: usize) -> (Vec<f64>,Ve
     (P_se, A_se)
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
     use super::*;
     use super::super::k_B;
@@ -99,8 +99,9 @@ mod tests {
 
     #[test]
     fn random_weights() {
+        let mut rng = StdRng::from_entropy();
         let num_windows = 5;
-        let weights = generate_random_weights(num_windows);
+        let weights = generate_random_weights(num_windows, &mut rng);
         assert_eq!(num_windows, weights.len());
         for w in weights {
             assert!(0.0 < w && w < 1.0);
@@ -109,8 +110,9 @@ mod tests {
 
     #[test]
     fn random_weighted_dataset() {
+        let mut rng = StdRng::from_entropy();
         let ds = build_hist_set();
-        let rnd_weights_ds = generate_random_weighted_dataset(ds);
+        let rnd_weights_ds = generate_random_weighted_dataset(ds, &mut rng);
         println!("{:?}", rnd_weights_ds.weights);
         for w in rnd_weights_ds.weights {
             assert!(w > 0.0);

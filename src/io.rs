@@ -1,6 +1,7 @@
 use super::histogram::Dataset;
 use super::histogram::Histogram;
 use super::Config;
+use super::correlation_analysis::{statistical_ineff, autocorrelation_time};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{BufReader,BufWriter};
@@ -115,12 +116,80 @@ fn is_in_time_boundaries(time: f64, cfg: &Config) -> bool {
     false
 }
 
-// parse a time series file into a histogram
-fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
-	let f = File::open(window_file)
+// Read a multidimensional timeseries
+// The resulting vector contains one vector per dimension
+fn read_timeseries(window_file: &str, cfg: &Config) -> Result<Vec<Vec<f64>>> {
+    let f = File::open(window_file)
         .chain_err(|| format!("Failed to open sample data file {}.", window_file))?;
     let mut buf = BufReader::new(&f);
 
+    let mut timeseries = vec![Vec::new(); cfg.dimens+1];
+
+    // read and parse each timeseries line
+    let mut line = String::new();
+    let mut linecount = 0;
+    while buf.read_line(&mut line).chain_err(|| "Failed to read line")? > 0 {
+        linecount += 1;
+
+        // skip comments and empty lines
+        if line.starts_with('#') || line.starts_with('@') || line.is_empty() {
+            line.clear();
+            continue;
+        }
+
+        {
+            let split: Vec<&str> = line.split_whitespace().collect();
+            if split.len() < cfg.dimens+1 {
+                bail!(format!("Wrong number of columns in line {} of window file {}. Empty Line?.", linecount, window_file));
+            }
+
+            for i in 0..cfg.dimens+1 {
+                timeseries[i].push(split[i].parse::<f64>()
+                    .chain_err(|| format!("Failed to parse line {} of window file {}.", linecount, window_file))?
+
+                );
+            }
+        }
+        
+        line.clear();
+    }
+    Ok(timeseries)
+}
+
+// calculates the inefficiency for every collective variable
+// filters the timeseries based on the highest inefficiency
+fn uncorrelate(timeseries: Vec<Vec<f64>>, cfg: &Config) -> Vec<Vec<f64>> {
+    // calculate inefficiencies and find the highest one
+    let gs: Vec<f64> = timeseries[1..].iter().map(|ts| statistical_ineff(ts)).collect();
+    let mut max_g = 1.0;
+    for g in gs {
+        if g > max_g {
+            max_g = g;
+        }
+    }
+
+    // round g up
+    let mut trunc_g = max_g.trunc() as usize;
+    if (trunc_g as f64 - max_g).abs() > 0.000_000_000_1 {
+        trunc_g += 1;
+    }
+
+    // filter correlated samples from timeseries
+    let prev_len = timeseries[0].len();
+    let timeseries = timeseries.into_iter().map(|ts| {
+        ts.into_iter().step_by(trunc_g).collect::<Vec<f64>>()
+    }).collect::<Vec<Vec<f64>>>();
+
+    let new_len = timeseries[0].len();
+    if cfg.verbose {
+        let tau = autocorrelation_time(max_g)* (timeseries[0][1]-timeseries[0][0]);
+        vprintln(format!("{:?}/{:?} samples are uncorrelated. {:?} samples removed from timeseries (tau={:.5})", new_len, prev_len, prev_len-new_len, tau), true);
+    }
+    timeseries
+}
+
+// parse a time series file into a histogram
+fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
     // total number of bins is the product of all dimensions length
     let total_bins = cfg.num_bins.iter().product();
     let mut hist = vec![0.0; total_bins];
@@ -130,40 +199,26 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
             (cfg.hist_max[idx] - cfg.hist_min[idx])/(cfg.num_bins[idx] as f64)
         }).collect();
 
-    // read and parse each timeseries line
-    let mut line = String::new();
-    let mut linecount = 0;
-    while buf.read_line(&mut line).chain_err(|| "Failed to read line")? > 0 {
-        linecount += 1;
-        // skip comments and empty lines
-        if line.starts_with('#') || line.starts_with('@') || line.is_empty() {
-            line.clear();
-            continue;
+    let mut timeseries: Vec<Vec<f64>> = read_timeseries(window_file, cfg)?;
+    
+    if cfg.uncorr {
+        timeseries = uncorrelate(timeseries, cfg);
+    }
+
+    for i in 0..timeseries[0].len() {
+        let mut values: Vec<f64> = vec![f64::NAN; cfg.dimens+1];
+        for j in 0..values.len() {
+            values[j] = timeseries[j][i];
         }
 
-        {
-
-            let split: Vec<&str> = line.split_whitespace().collect();
-            if split.len() < cfg.dimens+1 {
-                bail!(format!("Wrong number of columns in line {} of window file {}. Empty Line?.", linecount, window_file));
-            }
-
-            let mut values: Vec<f64> = vec![f64::NAN; cfg.dimens+1];
-            for i in 0..values.len() {
-                values[i] = split[i].parse::<f64>()
-                    .chain_err(|| format!("Failed to parse line {} of window file {}.", linecount, window_file))?;
-            }
-
-            if is_in_hist_boundaries(&values[1..], cfg) && is_in_time_boundaries(values[0], cfg) {
-                let bin_indeces: Vec<usize> = (0..cfg.dimens).map(|dimen: usize| {
-                    let val = values[dimen+1];
-                    ((val - cfg.hist_min[dimen]) / bin_width[dimen]) as usize
-                }).collect();
-                let index = flat_index(&bin_indeces, &cfg.num_bins);
-                hist[index] += 1.0;
-            }
+        if is_in_hist_boundaries(&values[1..], cfg) && is_in_time_boundaries(values[0], cfg) {
+            let bin_indeces: Vec<usize> = (0..cfg.dimens).map(|dimen: usize| {
+                let val = values[dimen+1];
+                ((val - cfg.hist_min[dimen]) / bin_width[dimen]) as usize
+            }).collect();
+            let index = flat_index(&bin_indeces, &cfg.num_bins);
+            hist[index] += 1.0;
         }
-        line.clear();
     }
 
     let num_points: f64 = hist.iter().sum();
@@ -214,7 +269,8 @@ mod tests {
             bootstrap: 0,
             bootstrap_seed: 1234,
             start: 0.0,
-            end: 1e+20
+            end: 1e+20,
+            uncorr: false,
         }
     }
 
@@ -233,6 +289,26 @@ mod tests {
         assert_approx_eq!(0.0, h.bins[7]);
     }
 
+    #[test]
+    fn read_timeseries() {
+        let f = "example/1d_cyclic/COLVAR+0.0.xvg";
+        let cfg = cfg();
+        let ts = super::read_timeseries(&f, &cfg).unwrap();
+        let expected = [
+            -0.153_145,
+            -0.377_860,
+            0.010_992,
+            0.123_074,
+            0.108_291,
+            0.261_607,
+        ];
+        assert!(ts.len() == 2);
+        assert!(ts[0].len() == 5000);
+        println!("{:?}", ts);
+        for (actual, expected) in ts[1].iter().zip(expected.iter()) {
+            assert!((actual-expected).abs() < 0.001, format!("{:?} != {:?}", actual, expected));
+        }
+    }
 
     #[test]
     fn read_data() {

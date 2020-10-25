@@ -101,3 +101,9 @@ args:
         help: Skip rows in timeseries with an index larger than this value (defaults to 1e+20)
         takes_value: true
         required: false
+    - uncorr:
+        short: g
+        long: uncorr
+        help: Estimates statistical inefficiency of each timeseries via autocorrelation and removes correlated samples (default is off).
+        takes_value: false
+        required: false 
