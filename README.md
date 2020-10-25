@@ -158,7 +158,6 @@ The example folder contains input and output files for two simple test systems:
 
 TODO
 ---
-- Autocorrelation
 - Replica exchange
 
 License & Citing
