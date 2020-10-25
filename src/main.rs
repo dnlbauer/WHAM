@@ -58,6 +58,8 @@ fn cli() -> Result<Config> {
         .chain_err(|| "Cannot parse start time.")?;
     let end: f64 = matches.value_of("end").unwrap_or("1e+20").parse()
         .chain_err(|| "Cannot parse end time.")?;
+
+    let uncorr: bool = matches.is_present("uncorr");
      
     if num_bins.len() != hist_max.len() || num_bins.len() != hist_max.len() {
         eprintln!("Input dimensions do not match (min: {}, max: {}, bins: {})",
@@ -69,7 +71,7 @@ fn cli() -> Result<Config> {
 
 	Ok(wham::Config{metadata_file, hist_min, hist_max, num_bins, dimens,
 		verbose, tolerance, max_iterations, temperature, cyclic, output,
-		bootstrap, bootstrap_seed, start, end})
+		bootstrap, bootstrap_seed, start, end, uncorr})
 }
 
 fn main() {
