@@ -40,7 +40,7 @@ wham has a convenient command line interface. You can see all options with
 ```wham -h```:
 
 ```
-wham 0.9.9
+wham 1.0.0
 D. Bauer <bauer@bio.tu-darmstadt.de>
 wham is a fast implementation of the weighted histogram analysis method (WHAM) written in Rust. It currently supports
 potential of mean force (PMF) calculations in multiple dimensions at constant temperature.
