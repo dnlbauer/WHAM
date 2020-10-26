@@ -31,6 +31,7 @@ pub fn read_data(cfg: &Config) -> Result<Dataset> {
 	let mut bias_pos: Vec<f64> = Vec::new();
 	let mut bias_fc: Vec<f64> = Vec::new();
     let mut histograms: Vec<Histogram> = Vec::new();
+    let mut timeseries_lengths: Vec<usize> = Vec::new();
 
 	let kT = cfg.temperature * k_B;
     let bin_width: Vec<f64> = (0..cfg.dimens).map(|idx| {
@@ -58,12 +59,13 @@ pub fn read_data(cfg: &Config) -> Result<Dataset> {
 
         // parse histogram data
         let path = get_relative_path(&cfg.metadata_file, split[0]);
-        let h = read_window_file(&path, cfg)
+        let (h, timeseries_inital_length) = read_window_file(&path, cfg)
             .chain_err(|| format!("Failed to parse process data file {}", &path))?;
         if h.num_points == 0 {
             bail!(format!("No data points in histogram boundaries: {}", &path))
         }
         histograms.push(h);
+        timeseries_lengths.push(timeseries_inital_length);
         vprintln(format!("{}, {} data points added.", &path,
                          histograms.last().unwrap().num_points), cfg.verbose);
 
@@ -81,6 +83,20 @@ pub fn read_data(cfg: &Config) -> Result<Dataset> {
     }
     
     if !histograms.is_empty() {
+        if cfg.uncorr {
+            println!("Timeseries Correlation");
+            println!();
+            println!("Window\t\tN\t\tN_uncorr\tN/N_uncorr");
+            for (idx, (n, h)) in timeseries_lengths.iter().zip(histograms.iter()).enumerate() {
+                println!("{:?}\t\t{:?}\t\t{:?}\t\t{:.2}",
+                    idx+1, n, h.num_points, h.num_points as f64 / *n as f64);
+            }
+            let total_n = timeseries_lengths.iter().sum::<usize>() as f64;
+            let total_h = histograms.iter().map(|h| h.num_points).sum::<u32>() as f64;
+            println!("\t\t\t\t\tTotal:\t{:.2}", total_h/total_n);
+               
+        }
+
         Ok(Dataset::new(num_bins, dimens_length, bin_width, cfg.hist_min.clone(), cfg.hist_max.clone(), bias_pos, bias_fc, kT, histograms, cfg.cyclic))
     } else {
         bail!("Histogram has no datapoints.")
@@ -114,6 +130,44 @@ fn is_in_time_boundaries(time: f64, cfg: &Config) -> bool {
         return true
     }
     false
+}
+
+// parse a time series file into a histogram
+fn read_window_file(window_file: &str, cfg: &Config) -> Result<(Histogram, usize)> {
+    // total number of bins is the product of all dimensions length
+    let total_bins = cfg.num_bins.iter().product();
+    let mut hist = vec![0.0; total_bins];
+
+    // bin width for each dimension: (max-min)/bins
+    let bin_width: Vec<f64> = (0..cfg.dimens).map(|idx| {
+            (cfg.hist_max[idx] - cfg.hist_min[idx])/(cfg.num_bins[idx] as f64)
+        }).collect();
+
+    let mut timeseries: Vec<Vec<f64>> = read_timeseries(window_file, cfg)?;
+    let timeseries_inital_length = timeseries[0].len();
+
+    if cfg.uncorr {
+        timeseries = uncorrelate(timeseries, cfg);
+    }
+
+    for i in 0..timeseries[0].len() {
+        let mut values: Vec<f64> = vec![f64::NAN; cfg.dimens+1];
+        for j in 0..values.len() {
+            values[j] = timeseries[j][i];
+        }
+
+        if is_in_hist_boundaries(&values[1..], cfg) && is_in_time_boundaries(values[0], cfg) {
+            let bin_indeces: Vec<usize> = (0..cfg.dimens).map(|dimen: usize| {
+                let val = values[dimen+1];
+                ((val - cfg.hist_min[dimen]) / bin_width[dimen]) as usize
+            }).collect();
+            let index = flat_index(&bin_indeces, &cfg.num_bins);
+            hist[index] += 1.0;
+        }
+    }
+
+    let num_points: f64 = hist.iter().sum();
+    Ok((Histogram::new(num_points as u32, hist), timeseries_inital_length))
 }
 
 // Read a multidimensional timeseries
@@ -188,43 +242,6 @@ fn uncorrelate(timeseries: Vec<Vec<f64>>, cfg: &Config) -> Vec<Vec<f64>> {
     timeseries
 }
 
-// parse a time series file into a histogram
-fn read_window_file(window_file: &str, cfg: &Config) -> Result<Histogram> {
-    // total number of bins is the product of all dimensions length
-    let total_bins = cfg.num_bins.iter().product();
-    let mut hist = vec![0.0; total_bins];
-
-    // bin width for each dimension: (max-min)/bins
-    let bin_width: Vec<f64> = (0..cfg.dimens).map(|idx| {
-            (cfg.hist_max[idx] - cfg.hist_min[idx])/(cfg.num_bins[idx] as f64)
-        }).collect();
-
-    let mut timeseries: Vec<Vec<f64>> = read_timeseries(window_file, cfg)?;
-    
-    if cfg.uncorr {
-        timeseries = uncorrelate(timeseries, cfg);
-    }
-
-    for i in 0..timeseries[0].len() {
-        let mut values: Vec<f64> = vec![f64::NAN; cfg.dimens+1];
-        for j in 0..values.len() {
-            values[j] = timeseries[j][i];
-        }
-
-        if is_in_hist_boundaries(&values[1..], cfg) && is_in_time_boundaries(values[0], cfg) {
-            let bin_indeces: Vec<usize> = (0..cfg.dimens).map(|dimen: usize| {
-                let val = values[dimen+1];
-                ((val - cfg.hist_min[dimen]) / bin_width[dimen]) as usize
-            }).collect();
-            let index = flat_index(&bin_indeces, &cfg.num_bins);
-            hist[index] += 1.0;
-        }
-    }
-
-    let num_points: f64 = hist.iter().sum();
-    Ok(Histogram::new(num_points as u32, hist))
-}
-
 // Write WHAM calculation results to out_file.
 pub fn write_results(out_file: &str, ds: &Dataset, free: &[f64],
     free_std: &[f64], prob: &[f64], prob_std: &[f64]) -> Result<()> {
@@ -278,8 +295,9 @@ mod tests {
     fn read_window_file() {
         let f = "example/1d_cyclic/COLVAR+0.0.xvg";
         let cfg = cfg();
-        let h = super::read_window_file(&f, &cfg).unwrap();
+        let (h, timeseries_inital_length) = super::read_window_file(&f, &cfg).unwrap();
         println!("{:?}", h);
+        assert_eq!(5000, timeseries_inital_length);
         assert_eq!(5000, h.num_points);
         assert_approx_eq!(0.0, h.bins[2]);
         assert_approx_eq!(11.0, h.bins[3]);
