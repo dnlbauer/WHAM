@@ -20,12 +20,6 @@ Features
 
 Installation
 ---
-WHAM requires the GSL library to be installed: 
-```bash
-# on debian/ubuntu:
-sudo apt-get install libgsl0-dev
-```
-
 Installation from source via cargo:
 ```bash
 # cargo installation
