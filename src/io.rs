@@ -132,6 +132,7 @@ fn is_in_time_boundaries(time: f64, cfg: &Config) -> bool {
     false
 }
 
+
 // parse a time series file into a histogram
 fn read_window_file(window_file: &str, cfg: &Config) -> Result<(Histogram, usize)> {
     // total number of bins is the product of all dimensions length
@@ -209,6 +210,7 @@ fn read_timeseries(window_file: &str, cfg: &Config) -> Result<Vec<Vec<f64>>> {
     }
     Ok(timeseries)
 }
+
 
 // calculates the inefficiency for every collective variable
 // filters the timeseries based on the highest inefficiency
