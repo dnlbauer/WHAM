@@ -1,4 +1,4 @@
-use rgsl::statistics;
+use super::statistics;
 
 // calculates the statistical inefficiency g of the given timeseries
 // the quantity g can be thought of: N/g is the number of uncorrelated
@@ -28,9 +28,9 @@ pub fn statistical_ineff(timeseries: &[f64]) -> f64 {
 // calculates the autocorrelation of a simeseries
 fn autocorrelation(timeseries: &[f64]) -> Vec<f64> {
     let n = timeseries.len();
-    let mean = statistics::mean(timeseries, 1, timeseries.len());
+    let mean = statistics::mean(timeseries);
     let d_mean = timeseries.iter().map(|x| x-mean).collect::<Vec<f64>>();
-    let cov = statistics::covariance(timeseries, 1, timeseries, 1, n);
+    let cov = statistics::autocov(timeseries);
 
     let mut autocorr = Vec::new();
     for t in 1..(n-1) {

@@ -2,7 +2,7 @@ use rand::prelude::*;
 use super::histogram::{Dataset};
 use super::perform_wham;
 use super::{Config,calc_free_energy};
-use rgsl::statistics;
+use super::statistics;
 
 // returns a set of num_windows continious weights by
 // a) generate num_windows-1 random variables and sort them
@@ -48,7 +48,7 @@ pub fn run_bootstrap(cfg: &Config, ds: Dataset, num_runs: usize) -> (Vec<f64>,Ve
     let mut P_se = vec![0.0; ds.num_bins];
     for bin in 0..ds.num_bins {
         let Ps = bootstrapped_Ps.iter().map(|window| window[bin]).collect::<Vec<f64>>();
-        P_se[bin] = statistics::sd(&Ps, 1, num_runs)/(num_runs as f64).sqrt();
+        P_se[bin] = statistics::sd(&Ps)/(num_runs as f64).sqrt();
     }
 
     // SE of A
@@ -60,7 +60,7 @@ pub fn run_bootstrap(cfg: &Config, ds: Dataset, num_runs: usize) -> (Vec<f64>,Ve
     let mut A_se = vec![0.0; ds.num_bins];
     for bin in 0..ds.num_bins {
         let As = bootstrapped_As.iter().map(|window| window[bin]).collect::<Vec<f64>>();
-        A_se[bin] = statistics::sd(&As, 1, num_runs)/(num_runs as f64).sqrt();
+        A_se[bin] = statistics::sd(&As)/(num_runs as f64).sqrt();
     }
 
     (P_se, A_se)

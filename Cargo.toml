@@ -13,7 +13,6 @@ keywords = ["math", "statistics", "histogram", "bioinformatics", "molecular-dyna
 clap = {version="2.32.0", features=['yaml']}
 error-chain = "0.12.0"
 rand = "0.7.*"
-GSL = "1.1"
 rayon = "1.0.3"
 
 [dev-dependencies]
