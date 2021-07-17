@@ -352,4 +352,16 @@ mod tests {
         let relative3 = super::get_relative_path(&path1, &path3);
         assert_eq!("path/to/subfolder/another_file.dat" ,relative3);
     }
+
+    #[test]
+    fn is_in_time_boundaries() {
+        let mut cfg = cfg();
+        cfg.start = 10.0;
+        cfg.end = 20.0;
+        assert!(super::is_in_time_boundaries(15.0, &cfg));
+        assert!(super::is_in_time_boundaries(10.0, &cfg));
+        assert!(super::is_in_time_boundaries(20.0, &cfg));
+        assert!(!super::is_in_time_boundaries(9.9999999, &cfg));
+        assert!(!super::is_in_time_boundaries(20.000001, &cfg));   
+    }
 }
