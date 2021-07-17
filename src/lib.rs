@@ -47,16 +47,19 @@ pub struct Config {
     pub start: f64,
     pub end: f64,
     pub uncorr: bool,
+    pub convdt: f64,
 }
 
 impl fmt::Display for Config {
 	 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
          write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?}, 
             verbose={}, tolerance={}, iterations={}, temperature={},
-            cyclic={:?}, uncorr={:?}, bootstrap={:?}, seed={:?}",
+            cyclic={:?}, uncorr={:?}, bootstrap={:?}, seed={:?},
+            uncorr={:?}, start={:?}, end={:?}, convdt={:?}",
             self.metadata_file, self.hist_min, self.hist_max, self.num_bins,
             self.verbose, self.tolerance, self.max_iterations, self.temperature,
-            self.cyclic, self.uncorr, self.bootstrap, self.bootstrap_seed)
+            self.cyclic, self.uncorr, self.bootstrap, self.bootstrap_seed,
+            self.uncorr, self.start, self.end, self.convdt)
     }
 }
 
@@ -183,27 +186,40 @@ pub fn run(cfg: &Config) -> Result<()>{
     println!("Supplied WHAM options: {}", &cfg);
 
     println!("Reading input files.");
-    let dataset = io::read_data(&cfg).chain_err(|| "Failed to create histogram.")?;
-    println!("{}", &dataset);
+    let datasets = io::read_data(&cfg).chain_err(|| "Failed to read data.")?;
 
-    let (P, F, F_prev) = perform_wham(&cfg, &dataset)?;
-    println!("WHAM converged.");
+    for (idx, dataset) in datasets.iter().enumerate() {
+        if datasets.len() > 1 {
+            println!("Dataset {}/{}: {}", idx+1, datasets.len(), &dataset);
+        }
+        else {
+            println!("{}", &dataset);
+        }
+        let (P, F, F_prev) = perform_wham(&cfg, &dataset)?;
+        println!("WHAM converged.");
 
-	let (P_std, free_energy_std) = if cfg.bootstrap > 0 {
-        println!("Bootstrapping..");      
-		error_analysis::run_bootstrap(&cfg, dataset.clone(), cfg.bootstrap)
-	} else {
-		(vec![0.0; P.len()], vec![0.0; P.len()])
-	};
+        let (P_std, free_energy_std) = if cfg.bootstrap > 0 {
+            println!("Bootstrapping..");      
+            error_analysis::run_bootstrap(&cfg, dataset.clone(), cfg.bootstrap)
+        } else {
+            (vec![0.0; P.len()], vec![0.0; P.len()])
+        };
 
-    // calculate free energy and dump state
-    println!("Finished. Dumping final PMF");
-	let free_energy = calc_free_energy(&dataset, &P);
-    dump_state(&dataset, &F, &F_prev, &P, &P_std, &free_energy, &free_energy_std);
+        // calculate free energy and dump state
+        println!("Finished. Dumping PMF");
+        let free_energy = calc_free_energy(&dataset, &P);
 
-    io::write_results(&cfg.output, &dataset, &free_energy, &free_energy_std, &P, &P_std)
-		.chain_err(|| "Could not write results to output file")?;
-
+        dump_state(&dataset, &F, &F_prev, &P, &P_std, &free_energy, &free_energy_std);
+        let append = idx > 0 && datasets.len() > 1;
+        let index = if datasets.len() > 1 {
+            Some(idx)
+        } else {
+            None
+        };
+        io::write_results(&cfg.output, append, &dataset, &free_energy, &free_energy_std, &P, &P_std, index)
+            .chain_err(|| "Could not write results to output file")?;
+    }
+    
     Ok(())
 }
 

@@ -68,10 +68,12 @@ fn cli() -> Result<Config> {
     }
 
     let dimens = num_bins.len();
+    let convdt: f64 = matches.value_of("convdt").unwrap_or("0").parse()
+        .chain_err(|| "Cannot parse convdt.")?;
 
 	Ok(wham::Config{metadata_file, hist_min, hist_max, num_bins, dimens,
 		verbose, tolerance, max_iterations, temperature, cyclic, output,
-		bootstrap, bootstrap_seed, start, end, uncorr})
+		bootstrap, bootstrap_seed, start, end, uncorr, convdt})
 }
 
 fn main() {
