@@ -152,6 +152,7 @@ tempering simulations, JCTC 3(1):26-41*
 
 TODO
 ---
+- Option to output histograms
 - Replica exchange
 
 License & Citing
