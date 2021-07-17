@@ -8,6 +8,9 @@ repository = "https://github.com/danijoo/WHAM"
 readme = "README.md"
 categories = ["science", "command-line-utilities", "algorithms"]
 keywords = ["math", "statistics", "histogram", "bioinformatics", "molecular-dynamics"]
+exclude = [
+    "example/*"
+]
 
 [dependencies]
 clap = {version="2.32.0", features=['yaml']}
