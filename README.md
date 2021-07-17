@@ -34,8 +34,8 @@ wham has a convenient command line interface. You can see all options with
 ```wham -h```:
 
 ```
-wham 1.0.0
-D. Bauer <bauer@bio.tu-darmstadt.de>
+wham 1.1.0
+D. Bauer <bauer@cbs.tu-darmstadt.de>
 wham is a fast implementation of the weighted histogram analysis method (WHAM) written in Rust. It currently supports
 potential of mean force (PMF) calculations in multiple dimensions at constant temperature.
 
@@ -56,7 +56,7 @@ The first column will be ignored and is followed by N reaction coordinates x.
 Shipped under the GPLv3 license.
 
 USAGE:
-   wham [FLAGS] [OPTIONS] --bins <BINS> --max <HIST_MAX> --file <METADATA> --min <HIST_MIN> --temperature <temperature>
+    wham [FLAGS] [OPTIONS] --bins <BINS> --max <HIST_MAX> --file <METADATA> --min <HIST_MIN> --temperature <temperature>
 
 FLAGS:
     -c, --cyclic     For periodic reaction coordinates. If this is set, the first and last coordinate bin in each
@@ -72,6 +72,10 @@ OPTIONS:
         --bt <bootstrap>               Number of bayesian bootstrapping runs for error analysis by assigning random
                                        weights (defaults to 0).
         --seed <bootstrap_seed>        Random seed for bootstrapping runs.
+        --convdt <convdt>              Performs WHAM for slices with the given delta in time and returns an output file
+                                       for each slice. THis is useful to check the result for convergence. Example: with
+                                       --convdt 100 and a timeseries ranging from 0-300, free energy surfaces for slices
+                                       0-100, 0-200 and 0-300 will be given returned.
         --end <end>                    Skip rows in timeseries with an index larger than this value (defaults to 1e+20)
     -i, --iterations <ITERATIONS>      Stop WHAM after this many iterations without convergence (defaults to 100,000).
         --max <HIST_MAX>               Histogram maxima (comma separated). Also accepts "pi".
