@@ -57,7 +57,13 @@ mod tests {
         let timeseries = read_timeseries("example/1d_cyclic/COLVAR-2.5.xvg");
         let g = super::statistical_ineff(&timeseries);
         println!("{:?}", g);
-        assert!((g - 3.859).abs() < 0.001)
+        assert!((g - 3.859).abs() < 0.001);
+
+        // a "random" timeseries with g < 1.0
+        let timeseries = [1_f64, 4_f64, 921_f64, 121213_f64, 23192_f64,
+            8913_f64, 1232_f64, 2_f64, 151_f64, 123091_f64];
+        let g = super::statistical_ineff(&timeseries);
+        assert_approx_eq!(g, 1.0);
     }
 
     #[test]
