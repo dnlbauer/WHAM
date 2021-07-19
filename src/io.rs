@@ -172,12 +172,10 @@ fn get_convdt_boundaries(timeseries: &[f64], cfg: &Config) -> Vec<(f64, f64)> {
     if first_timestep < cfg.start {
         first_timestep = cfg.start;
     }
-    println!("{} to {} with dt={}", first_timestep, last_timestep, cfg.convdt);
     if cfg.convdt == 0.0 {
         vec![(0.0, last_timestep)]
     } else {
         let intervals: usize = ((last_timestep - first_timestep) / cfg.convdt).ceil() as usize;
-        println!("{:?}", intervals);
         (1..intervals+1).map(|i| {
             i as f64 * cfg.convdt + first_timestep
         }).map(|end| { (first_timestep, end) }).collect()
