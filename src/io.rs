@@ -410,6 +410,7 @@ mod tests {
             end: 1e+20,
             uncorr: false,
             convdt: 0.0,
+            ignore_empty: false,
         }
     }
 
