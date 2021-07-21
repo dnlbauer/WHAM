@@ -112,3 +112,8 @@ args:
         help: "Performs WHAM for slices with the given delta in time and returns an output file for each slice. THis is useful to check the result for convergence. Example: with --convdt 100 and a timeseries ranging from 0-300, free energy surfaces for slices 0-100, 0-200 and 0-300 will be given returned."
         takes_value: true
         required: false
+    - ignore_empty:
+        long: ignore_empty
+        help: If this is set, do not fail if a histogram is empty.
+        takes_value: false
+        required: false

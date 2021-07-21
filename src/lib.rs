@@ -48,6 +48,7 @@ pub struct Config {
     pub end: f64,
     pub uncorr: bool,
     pub convdt: f64,
+    pub ignore_empty: bool
 }
 
 impl fmt::Display for Config {
@@ -55,11 +56,11 @@ impl fmt::Display for Config {
          write!(f, "Metadata={}, hist_min={:?}, hist_max={:?}, bins={:?}, 
             verbose={}, tolerance={}, iterations={}, temperature={},
             cyclic={:?}, uncorr={:?}, bootstrap={:?}, seed={:?},
-            uncorr={:?}, start={:?}, end={:?}, convdt={:?}",
+            uncorr={:?}, start={:?}, end={:?}, convdt={:?}, ignore_empty={:?}",
             self.metadata_file, self.hist_min, self.hist_max, self.num_bins,
             self.verbose, self.tolerance, self.max_iterations, self.temperature,
             self.cyclic, self.uncorr, self.bootstrap, self.bootstrap_seed,
-            self.uncorr, self.start, self.end, self.convdt)
+            self.uncorr, self.start, self.end, self.convdt, self.ignore_empty)
     }
 }
 

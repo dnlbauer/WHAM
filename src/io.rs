@@ -103,19 +103,24 @@ pub fn read_data(cfg: &Config) -> Result<Vec<Dataset>> {
         }
     }
 
-    // Histograms are stored as timeseries x convdt right now,
-    // but we need convdt x timeseries to create Datasets
-    // this transposes the data
+    // Datasets are created from histograms.
+    // Empty histograms result in an error when its the final dataset,
+    // and a warning otherwise.
     let num_datasets: usize = histograms.iter().map(|h| h.len()).max().unwrap();
+    let dataset_boundaries: Vec<(f64, f64)> = (0..num_datasets).map(|idx| {
+        (cfg.start, cfg.start+(idx as f64 + 1.0)*cfg.convdt) }
+    ).collect();
+    vprintln(format!("Generating {} datasets from histograms.", num_datasets), cfg.verbose);
     let datasets: Vec<Dataset> = (0..num_datasets).map(|idx| {
         let mut dataset_histograms: Vec<Histogram> = Vec::with_capacity(histograms.len());
         for (hs, path) in histograms.iter().zip(&paths) {
             if hs.len() > idx {
                 dataset_histograms.push(hs[idx].clone())
             } else {
-                let warning = format!("No data points in histogram boundaries: {}", &path);
-                if idx+1 == num_datasets {
-                    bail!(warning);
+                let warning = format!("No data points for interval {}-{} in histogram boundaries: {}.",
+                    dataset_boundaries[idx].0, dataset_boundaries[idx].1 ,&path);
+                if !cfg.ignore_empty && idx+1 == num_datasets {
+                    bail!(warning + " This is the final dataset.");
                 } else {
                     eprintln!("{}", warning);
                 }

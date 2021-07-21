@@ -71,9 +71,11 @@ fn cli() -> Result<Config> {
     let convdt: f64 = matches.value_of("convdt").unwrap_or("0").parse()
         .chain_err(|| "Cannot parse convdt.")?;
 
+    let ignore_empty: bool = matches.is_present("ignore_empty");
+
 	Ok(wham::Config{metadata_file, hist_min, hist_max, num_bins, dimens,
 		verbose, tolerance, max_iterations, temperature, cyclic, output,
-		bootstrap, bootstrap_seed, start, end, uncorr, convdt})
+		bootstrap, bootstrap_seed, start, end, uncorr, convdt, ignore_empty})
 }
 
 fn main() {
