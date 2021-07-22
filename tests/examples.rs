@@ -54,7 +54,6 @@ mod integration {
     }
 
     #[test]
-    // Test if convdt runs have the same result as normal runs
     fn wham_convdt() {
         // run wham with convdt
         let output_file = "/tmp/wham_test_convdt.out";
@@ -113,7 +112,6 @@ mod integration {
     }
 
     #[test]
-    // #[ignore]
     fn wham_1d_cyclic_bootstrap() {
         let output_file = "/tmp/wham_test_1d_cyclic_bt.out";
         get_command()
@@ -136,7 +134,6 @@ mod integration {
     }
 
     #[test]
-    // #[ignore] // expensive
     fn wham_2d_cyclic() {
         let output_file = "/tmp/wham_test_2d_cyclic.out";
         let out=
