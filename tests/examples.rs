@@ -113,7 +113,7 @@ mod integration {
     }
 
     #[test]
-    #[ignore]
+    // #[ignore]
     fn wham_1d_cyclic_bootstrap() {
         let output_file = "/tmp/wham_test_1d_cyclic_bt.out";
         get_command()
@@ -136,20 +136,22 @@ mod integration {
     }
 
     #[test]
-    #[ignore] // expensive
+    // #[ignore] // expensive
     fn wham_2d_cyclic() {
         let output_file = "/tmp/wham_test_2d_cyclic.out";
+        let out=
         get_command()
-            .args(&["--bins", "100,100", "--max", "pi,pi", "--min", "-pi,-pi", "-T", "300", "--cyclic"])
-            .args(&["-f", "example/2d_cyclic/metadata.dat"])
+            .args(&["--bins", "50,50", "--max", "pi,pi", "--min", "-pi,-pi", "-T", "300", "--cyclic"])
+            .args(&["--tolerance", "0.001"])
+            .args(&["-f", "tests/data/metadata_2d_cyclic_reduced.dat"])
             .args(&["-o", output_file])
             .output()
             .expect("failed to execute process");
-
+        println!("{:?}", out);
         assert!(fs::metadata(output_file).is_ok());
         let output = Command::new("diff")
             .arg(output_file)
-            .arg("example/2d_cyclic/wham.out")
+            .arg("tests/data/2d_cyclic_reduced.out")
             .output()
             .expect("failed to run diff");
         let output_len = String::from_utf8_lossy(&output.stdout).len();
