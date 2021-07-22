@@ -30,8 +30,8 @@ pub fn vprintln(s: String, verbose: bool) {
 // given in the metadata file. This generates at least one Dataset,
 // or multiple Datasets if convdt is set in the config
 pub fn read_data(cfg: &Config) -> Result<Vec<Dataset>> {
-	let mut bias_pos: Vec<f64> = Vec::new();
-	let mut bias_fc: Vec<f64> = Vec::new();
+    let mut bias_pos: Vec<f64> = Vec::new();
+    let mut bias_fc: Vec<f64> = Vec::new();
     let mut timeseries_lengths: Vec<usize> = Vec::new();
     let mut paths = Vec::new();
 
@@ -43,7 +43,7 @@ pub fn read_data(cfg: &Config) -> Result<Vec<Dataset>> {
     // start..convdt, start..2*convdt, ...
     let mut histograms =  vec![Vec::new(); dataset_boundaries.len()];
 
-	let kT = cfg.temperature * k_B;
+    let kT = cfg.temperature * k_B;
     let bin_width: Vec<f64> = (0..cfg.dimens).map(|idx| {
             (cfg.hist_max[idx] - cfg.hist_min[idx])/(cfg.num_bins[idx] as f64)
         }).collect();
@@ -55,14 +55,14 @@ pub fn read_data(cfg: &Config) -> Result<Vec<Dataset>> {
 
     // read each metadata file line and parse it
     for (line_num,l) in buf.lines().enumerate() {
-    	let line = l.chain_err(|| "Failed to read line")?;
+        let line = l.chain_err(|| "Failed to read line")?;
 
         // skip comments and empty lines
         if line.starts_with('#') || line.is_empty() {
-    		continue;
-    	}
+            continue;
+        }
 
-    	let split: Vec<&str> = line.split_whitespace().collect();
+        let split: Vec<&str> = line.split_whitespace().collect();
         if split.len() < 1 + cfg.dimens * 2 {
             bail!(format!("Wrong number of columns in line {} of metadata file. Empty Line?", line_num+1));
         }

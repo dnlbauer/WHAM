@@ -73,29 +73,29 @@ mod tests {
     use super::super::histogram::Histogram;
 
     fn build_hist() -> Histogram {
-		Histogram::new(
-			22, // num_points
-			vec![1.0, 1.0, 3.0, 5.0, 12.0] // bins
-		)
-	}
+        Histogram::new(
+            22, // num_points
+            vec![1.0, 1.0, 3.0, 5.0, 12.0] // bins
+        )
+    }
 
-	fn build_hist_set() -> Dataset {
-		let h1 = build_hist();
-		let h2 = build_hist();
-		let h3 = build_hist();
-		Dataset::new(
-			5, // num bins
-			vec![3],
-			vec![1.0], // bin width
-			vec![0.0], // hist min
-			vec![9.0], // hist max
-			vec![4.5, 4.5, 4.5], // x0
-			vec![10.0, 10.0, 10.0], // fc
-			300.0*k_B, // kT
-			vec![h1, h2, h3], // hists
-			false // cyclic
-		)
-	}
+    fn build_hist_set() -> Dataset {
+        let h1 = build_hist();
+        let h2 = build_hist();
+        let h3 = build_hist();
+        Dataset::new(
+            5, // num bins
+            vec![3],
+            vec![1.0], // bin width
+            vec![0.0], // hist min
+            vec![9.0], // hist max
+            vec![4.5, 4.5, 4.5], // x0
+            vec![10.0, 10.0, 10.0], // fc
+            300.0*k_B, // kT
+            vec![h1, h2, h3], // hists
+            false // cyclic
+        )
+    }
 
     #[test]
     fn random_weights() {
