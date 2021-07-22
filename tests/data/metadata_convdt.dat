@@ -1,0 +1,12 @@
+# 500 pts
+COLVAR_0-10.xvg	0.0	100
+# 100 pts
+COLVAR_0-2.xvg	0.0	100
+# 250 pts
+COLVAR_0-5.xvg	0.0	100
+# 250 pts
+COLVAR_5-10.xvg	0.0	100
+# 150 pts
+COLVAR_7-10.xvg	0.0	100
+# 250 pts
+COLVAR_2-7.xvg	0.0	100

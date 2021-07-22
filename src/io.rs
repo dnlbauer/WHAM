@@ -32,9 +32,16 @@ pub fn vprintln(s: String, verbose: bool) {
 pub fn read_data(cfg: &Config) -> Result<Vec<Dataset>> {
 	let mut bias_pos: Vec<f64> = Vec::new();
 	let mut bias_fc: Vec<f64> = Vec::new();
-    let mut histograms: Vec<Vec<Histogram>> = Vec::new();
     let mut timeseries_lengths: Vec<usize> = Vec::new();
     let mut paths = Vec::new();
+
+    // Boundaries of individual histograms if convdt is set.
+    let dataset_boundaries: Vec<(f64, f64)> = get_convdt_boundaries(cfg.start, cfg.end, cfg.convdt);
+    let num_datasets = dataset_boundaries.len();
+    
+    // for each timeseries, histograms are build for slices according to
+    // start..convdt, start..2*convdt, ...
+    let mut histograms =  vec![Vec::new(); dataset_boundaries.len()];
 
 	let kT = cfg.temperature * k_B;
     let bin_width: Vec<f64> = (0..cfg.dimens).map(|idx| {
@@ -45,7 +52,6 @@ pub fn read_data(cfg: &Config) -> Result<Vec<Dataset>> {
 
     let f = File::open(&cfg.metadata_file).chain_err(|| "Failed to open metadata file")?;
     let buf = BufReader::new(&f);
-
 
     // read each metadata file line and parse it
     for (line_num,l) in buf.lines().enumerate() {
@@ -80,47 +86,39 @@ pub fn read_data(cfg: &Config) -> Result<Vec<Dataset>> {
             .chain_err(|| format!("Failed to read time series from {}", &path))?;
         timeseries_lengths.push(timeseries_initial_lengths);
 
-
-        // for each timeseries, histograms are build for slices according to
-        // start..convdt, start..2*convdt, ...
-        histograms.push(Vec::new());
-        let h_idx = histograms.len()-1;
-        let convdt_stops = get_convdt_boundaries(&timeseries[0], &cfg);
-        for (idx, interval) in convdt_stops.iter().enumerate() {
+        for (idx, interval) in dataset_boundaries.iter().enumerate() {
             // build histogram for slice start.._stop
             let (start, stop) = interval;
             let timeseries_mask: Vec<bool> = (0..timeseries[0].len()).map(|i| {
                 is_in_time_boundaries(timeseries[0][i], *start, *stop)
             }).collect();
             let hist = build_histogram_from_timeseries(&timeseries, &timeseries_mask, cfg);
-            histograms[h_idx].push(hist);
+            histograms[idx].push(hist);
 
-            if (cfg.convdt == 0.00) || idx+1 == convdt_stops.len() {
-                vprintln(format!("{}, {} data points added.", &path,
-                    histograms[h_idx].last().unwrap().num_points), cfg.verbose);
+            if (cfg.convdt == 0.00) || idx+1 == num_datasets {
+                vprintln(format!("{}, {} data points added.",
+                    &path, histograms[idx].last().unwrap().num_points), cfg.verbose);
                 break
             }
         }
     }
 
     // Datasets are created from histograms.
-    // Empty histograms result in an error when its the final dataset,
-    // and a warning otherwise.
-    let num_datasets: usize = histograms.iter().map(|h| h.len()).max().unwrap();
-    let dataset_boundaries: Vec<(f64, f64)> = (0..num_datasets).map(|idx| {
-        (cfg.start, cfg.start+(idx as f64 + 1.0)*cfg.convdt) }
-    ).collect();
+    // Empty histograms result in an error when its the final dataset, and a warning otherwise.
     vprintln(format!("Generating {} datasets from histograms.", num_datasets), cfg.verbose);
-    let datasets: Vec<Dataset> = (0..num_datasets).map(|idx| {
-        let mut dataset_histograms: Vec<Histogram> = Vec::with_capacity(histograms.len());
-        for (hs, path) in histograms.iter().zip(&paths) {
-            if hs.len() > idx {
-                dataset_histograms.push(hs[idx].clone())
-            } else {
+    let datasets: Vec<Dataset> = histograms.into_iter().enumerate().map(|(dataset_idx, dataset_histograms)| {
+        for (hs, path) in dataset_histograms.iter().zip(&paths) {
+            if hs.num_points == 0 {
                 let warning = format!("No data points for interval {}-{} in histogram boundaries: {}.",
-                    dataset_boundaries[idx].0, dataset_boundaries[idx].1 ,&path);
-                if !cfg.ignore_empty && idx+1 == num_datasets {
-                    bail!(warning + " This is the final dataset.");
+                    dataset_boundaries[dataset_idx].0, dataset_boundaries[dataset_idx].1 ,&path);
+
+                if dataset_idx+1 == num_datasets {
+                    let warning = warning + " This is the final dataset.";
+                    if cfg.ignore_empty {
+                        eprintln!("{}", warning);
+                    } else {
+                        bail!(warning);
+                    }
                 } else {
                     eprintln!("{}", warning);
                 }
@@ -167,23 +165,20 @@ pub fn read_data(cfg: &Config) -> Result<Vec<Dataset>> {
     }
 }
 
-// builds a time boundaries for datasets from convdt, timeseries start and end
-fn get_convdt_boundaries(timeseries: &[f64], cfg: &Config) -> Vec<(f64, f64)> {
-    let mut last_timestep = *timeseries.last().unwrap();
-    if last_timestep > cfg.end {
-        last_timestep = cfg.end;
-    }
-    let mut first_timestep = *timeseries.first().unwrap();
-    if first_timestep < cfg.start {
-        first_timestep = cfg.start;
-    }
-    if cfg.convdt == 0.0 {
-        vec![(0.0, last_timestep)]
+// builds a time boundaries for datasets from convdt, start and end
+fn get_convdt_boundaries(start: f64, end: f64, convdt: f64) -> Vec<(f64, f64)> {
+    if convdt == 0.0 {
+        vec![(start, end)]
     } else {
-        let intervals: usize = ((last_timestep - first_timestep) / cfg.convdt).ceil() as usize;
+        let intervals: usize = ((end - start) / convdt).ceil() as usize;
         (1..intervals+1).map(|i| {
-            i as f64 * cfg.convdt + first_timestep
-        }).map(|end| { (first_timestep, end) }).collect()
+            let interval_end = i as f64 * convdt + start;
+            if interval_end > end {
+                end
+            } else {
+                interval_end
+            }
+        }).map(|interval_end| { (start, interval_end) }).collect()
     }
 }
 
@@ -273,7 +268,7 @@ fn read_window_file(window_file: &str, cfg: &Config) -> Result<(Vec<Vec<f64>>, u
         timeseries = uncorrelate(timeseries, cfg);
     }
 
-    if timeseries[0].is_empty() {
+    if timeseries[0].is_empty() && !cfg.ignore_empty {
         bail!("Time series is empty")
     }
 
@@ -466,6 +461,99 @@ mod tests {
     }
 
     #[test]
+    fn read_data_empty() {
+        let mut cfg = cfg();
+        cfg.metadata_file = "tests/data/metadata_convdt.dat".to_string();
+        cfg.start = 2.5;
+        cfg.end = 9.0;
+        cfg.ignore_empty = false;
+
+        // should throw an error since one first timeseries ends at 2
+        let ds = super::read_data(&cfg);
+        if ds.is_ok() {
+            panic!()
+        }
+
+        // should not throw an error because ignore_empty is set
+        cfg.ignore_empty = true;
+        let ds = super::read_data(&cfg);
+        if ds.is_err() {
+            panic!()
+        }
+    }
+
+    // test if convdt results in correct parsing
+    // 6 timeseries are loaded ranging from:
+    // 1. 0-10, 500 datapoints
+    // 2. 0-2,  100 datapoints
+    // 3. 0-5,  250 datapoints
+    // 4. 5-10, 250 datapoints
+    // 5. 7-10, 150 datapoints
+    // 6  2-7,  250 datapoints
+    #[test]
+    fn read_data_convdt() {
+        let mut cfg = cfg();
+        cfg.metadata_file = "tests/data/metadata_convdt.dat".to_string();
+        cfg.convdt = 2.0;
+        cfg.start = 0.0;
+        cfg.end = 9.0;
+        let dss = super::read_data(&cfg).unwrap();
+        assert_eq!(5, dss.len());
+
+        for ds in &dss {
+            assert_eq!(6, ds.num_windows);
+            assert_eq!(6, ds.histograms.len());
+        }
+
+        let hist_points: Vec<u32> = dss.iter().map(|ds| {
+            ds.histograms.iter().map(|h| h.num_points).sum()
+        }).collect();
+
+        let expected_hist_points = vec![
+            300,  // 0-2: 100+100+100+0+0
+            600,  // 0-4: 200+100+200+0+0+100
+            900,  // 0-6: 300+100+250+50+0+200
+            1200, // 0-8: 400+100+250+150+50+250
+            1350, // 0-9: 450+100+250+200+100+250
+        ];
+        for (expected, actual) in expected_hist_points.iter().zip(hist_points.iter()) {
+            assert_eq!(expected, actual);
+        }
+    }
+
+    // test convdt with a single time series
+    #[test]
+    fn read_data_convdt_single() {
+        let mut cfg = cfg();
+        cfg.metadata_file = "tests/data/metadata_convdt_single.dat".to_string();
+        cfg.convdt = 2.0;
+        cfg.start = 0.0;
+        cfg.end = 9.0;
+        let dss = super::read_data(&cfg).unwrap();
+        assert_eq!(5, dss.len());
+
+        for ds in &dss {
+            assert_eq!(1, ds.num_windows);
+            assert_eq!(1, ds.histograms.len());
+        }
+
+        let hist_points: Vec<u32> = dss.iter().map(|ds| {
+            ds.histograms.iter().map(|h| h.num_points).sum()
+        }).collect();
+
+        let expected_hist_points = vec![
+            0,   // 0-2
+            100, // 0-4
+            200, // 0-6
+            250, // 0-8
+            250, // 0-9
+        ];
+        for (expected, actual) in expected_hist_points.iter().zip(hist_points.iter()) {
+            assert_eq!(expected, actual);
+        }
+    }
+
+    #[test]
     fn get_relative_path() {
         let path1 = "path/to/some_file.dat";
         let path2 = "another_file.dat";
@@ -489,24 +577,13 @@ mod tests {
 
     #[test]
     fn get_convdt_boundaries() {
-        let mut cfg = cfg();
-        
-        let timeseries: Vec<f64> = (0..31).map(|i| i as f64).collect();
-        println!("{:?}", timeseries);
-
-        cfg.start = 10.0;
-        cfg.end = 20.0;
-        cfg.convdt = 10.0;
-        let test = super::get_convdt_boundaries(&timeseries, &cfg);
+        let test = super::get_convdt_boundaries(10.0, 20.0, 10.0);
         println!("{:?}", test);
         assert!(test.len() == 1);
         assert_approx_eq!(test[0].0, 10.0);
         assert_approx_eq!(test[0].1, 20.0);
 
-        cfg.start = 10.0;
-        cfg.end = 20.0;
-        cfg.convdt = 5.0;
-        let test = super::get_convdt_boundaries(&timeseries, &cfg);
+        let test = super::get_convdt_boundaries(10.0, 20.0, 5.0);
         println!("{:?}", test);
         assert!(test.len() == 2);
         assert_approx_eq!(test[0].0, 10.0);
@@ -514,34 +591,14 @@ mod tests {
         assert_approx_eq!(test[1].0, 10.0);
         assert_approx_eq!(test[1].1, 20.0);
 
-        let timeseries: Vec<f64> = (10..21).map(|i| i as f64).collect();
-        println!("{:?}", timeseries);
-
-        cfg.start = 10.0;
-        cfg.end = 20.0;
-        cfg.convdt = 10.0;
-        let test = super::get_convdt_boundaries(&timeseries, &cfg);
+        let test = super::get_convdt_boundaries(5.0, 30.0, 10.0);
         println!("{:?}", test);
-        assert!(test.len() == 1);
-        assert_approx_eq!(test[0].0, 10.0);
-        assert_approx_eq!(test[0].1, 20.0);
-
-        cfg.start = 5.0;
-        cfg.end = 20.0;
-        cfg.convdt = 10.0;
-        let test = super::get_convdt_boundaries(&timeseries, &cfg);
-        println!("{:?}", test);
-        assert!(test.len() == 1);
-        assert_approx_eq!(test[0].0, 10.0);
-        assert_approx_eq!(test[0].1, 20.0);
-
-        cfg.start = 5.0;
-        cfg.end = 30.0;
-        cfg.convdt = 10.0;
-        let test = super::get_convdt_boundaries(&timeseries, &cfg);
-        println!("{:?}", test);
-        assert!(test.len() == 1);
-        assert_approx_eq!(test[0].0, 10.0);
-        assert_approx_eq!(test[0].1, 20.0);
+        assert!(test.len() == 3);
+        assert_approx_eq!(test[0].0, 5.0);
+        assert_approx_eq!(test[0].1, 15.0);
+        assert_approx_eq!(test[1].0, 5.0);
+        assert_approx_eq!(test[1].1, 25.0);
+        assert_approx_eq!(test[2].0, 5.0);
+        assert_approx_eq!(test[2].1, 30.0);
     }
 }

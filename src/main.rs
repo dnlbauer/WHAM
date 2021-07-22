@@ -2,6 +2,8 @@ extern crate wham;
 #[macro_use]
 extern crate clap;
 extern crate rand;
+#[macro_use]
+extern crate error_chain;
 
 use rand::prelude::*;
 use clap::App;
@@ -68,6 +70,9 @@ fn cli() -> Result<Config> {
     }
 
     let dimens = num_bins.len();
+    if matches.is_present("convdt") && (!matches.is_present("start") || !matches.is_present("end")) {
+        bail!("--convdt requires --start and --end to be set.")
+    }
     let convdt: f64 = matches.value_of("convdt").unwrap_or("0").parse()
         .chain_err(|| "Cannot parse convdt.")?;
 

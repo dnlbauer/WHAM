@@ -108,4 +108,20 @@ mod integration {
         ));
     }
 
+    #[test]
+    fn convdt_needs_start_end() {
+        let output = get_command()
+            .args(&["--bins", "100", "--min", "-3.0", "--max", "3.0", "-T", "300"])
+            .args(&["-f", "tests/data/metadata_unparseable1.dat"])
+            .args(&["-o", "/dev/null"])
+            .args(&["--convdt", "100"])
+            .output()
+            .expect("failed to execute process");
+        let output = String::from_utf8_lossy(&output.stderr);
+        println!("{}", output);
+        assert!(output.to_string().contains(
+            "--convdt requires --start and --end to be set"
+        ));
+    }
+
 }
