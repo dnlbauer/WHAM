@@ -153,12 +153,6 @@ timeseries is used for unbiasing. A more detailed description of the method can 
 *Chodera, J.D. et al. (2007). Use of the weighted histogram analysis method for the analysis of simulated and parallel
 tempering simulations, JCTC 3(1):26-41*
 
-
-TODO
----
-- Option to output histograms
-- Replica exchange
-
 License & Citing
 ---
 WHAM is licensed under the GPL-3.0 license. Please read the LICENSE file in this
