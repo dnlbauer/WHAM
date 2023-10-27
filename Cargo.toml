@@ -15,7 +15,7 @@ exclude = [
 [dependencies]
 clap = {version="2.32.0", features=['yaml']}
 error-chain = "0.12.0"
-rand = "0.7.*"
+rand = "0.8.*"
 rayon = "1.0.3"
 
 [dev-dependencies]
