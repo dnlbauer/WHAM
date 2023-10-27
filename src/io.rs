@@ -444,7 +444,7 @@ mod tests {
         assert!(ts[0].len() == 5000);
         println!("{:?}", ts);
         for (actual, expected) in ts[1].iter().zip(expected.iter()) {
-            assert!((actual-expected).abs() < 0.001, format!("{:?} != {:?}", actual, expected));
+            assert!((actual-expected).abs() < 0.001, "{:?} != {:?}", actual, expected);
         }
     }
 
